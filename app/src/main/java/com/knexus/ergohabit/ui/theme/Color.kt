@@ -15,3 +15,4 @@ val RedCritical   = Color(0xFFE53935)
 val TextPrimary   = Color(0xFF1A3A2A)
 val TextSecondary = Color(0xFF6B8F71)
 val TextGray      = Color(0xFF9AB0A0)
+//colores
