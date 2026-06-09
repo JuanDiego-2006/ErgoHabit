@@ -12,24 +12,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knexus.ergohabit.ui.theme.*
 
-/**
- * Fila de tarjetas de estadísticas rápidas.
- */
+// Solo Hábitos hoy y Racha — sin Puntos
 @Composable
 fun FilaEstadisticas(vibraciones: Int) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        TarjetaEstadistica(valor = "1/4", label = "Hábitos hoy", colorFondo = BlancoPuro, colorTexto = TextoPrimario, modifier = Modifier.weight(1f))
-        TarjetaEstadistica(valor = "$vibraciones", label = "Alertas", colorFondo = MoradoClaro, colorTexto = MoradoAcento, modifier = Modifier.weight(1f))
-        TarjetaEstadistica(valor = "340 pts", label = "Puntos", colorFondo = NaranjaClaro, colorTexto = NaranjaAcento, modifier = Modifier.weight(1f))
+        TarjetaEstadistica(
+            valor = "1/4",
+            label = "Hábitos hoy",
+            colorFondo = BgWhite,
+            colorTexto = TextPrimary,
+            modifier = Modifier.weight(1f)
+        )
+        TarjetaEstadistica(
+            valor = "12 días",
+            label = "Racha",
+            colorFondo = PurpleLight,
+            colorTexto = PurpleAccent,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
-/**
- * Componente base para cada tarjeta de estadística.
- */
 @Composable
 fun TarjetaEstadistica(
     valor: String,

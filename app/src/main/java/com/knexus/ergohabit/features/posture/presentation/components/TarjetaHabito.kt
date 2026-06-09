@@ -18,99 +18,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knexus.ergohabit.ui.theme.*
 
-/**
- * Componente que muestra una tarjeta con el progreso de un hábito específico.
- */
 @Composable
-fun TarjetaHabito(
-    emoji: String,
-    nombre: String,
-    meta: String,
-    porcentaje: Int,
-    colorPorcentaje: Color,
-    colorProgreso: Color,
-    completado: Boolean
-) {
+fun HabitCard(emoji: String, name: String, meta: String, pct: Int, pctColor: Color, progressColor: Color, completed: Boolean) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = BlancoPuro),
+        colors = CardDefaults.cardColors(containerColor = BgWhite),
         elevation = CardDefaults.cardElevation(0.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 10.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(14.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(VerdeClaro)
-            ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(14.dp)) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(GreenLight)) {
                 Text(text = emoji, fontSize = 20.sp)
             }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 12.dp, end = 8.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = nombre,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoPrimario,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = "$porcentaje%",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colorPorcentaje
-                    )
+                    Text(text = name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary, modifier = Modifier.weight(1f))
+                    Text(text = "$pct%", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = pctColor)
                 }
                 LinearProgressIndicator(
-                    progress = { porcentaje / 100f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp)
-                        .height(7.dp)
-                        .clip(RoundedCornerShape(6.dp)),
-                    color = colorProgreso,
-                    trackColor = Color(0xFFE8EDE9)
+                    progress = { pct / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).height(7.dp).clip(RoundedCornerShape(6.dp)),
+                    color = progressColor, trackColor = Color(0xFFE8EDE9)
                 )
-                Text(
-                    text = meta,
-                    fontSize = 12.sp,
-                    color = TextoGris,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                Text(text = meta, fontSize = 12.sp, color = TextGray, modifier = Modifier.padding(top = 4.dp))
             }
-            if (completado) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(MoradoAcento)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Check,
-                        contentDescription = null,
-                        tint = BlancoPuro,
-                        modifier = Modifier.size(18.dp)
-                    )
+            if (completed) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(30.dp).clip(CircleShape).background(PurpleAccent)) {
+                    Icon(Icons.Outlined.Check, contentDescription = null, tint = BgWhite, modifier = Modifier.size(18.dp))
                 }
             } else {
-                Icon(
-                    imageVector = Icons.Outlined.ChevronRight,
-                    contentDescription = null,
-                    tint = TextoGris,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextGray, modifier = Modifier.size(20.dp))
             }
         }
     }

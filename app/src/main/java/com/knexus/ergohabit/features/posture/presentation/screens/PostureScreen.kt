@@ -2,26 +2,43 @@ package com.knexus.ergohabit.features.posture.presentation.screens
 
 import android.content.Intent
 import android.os.Build
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.knexus.ergohabit.ui.theme.*
-import com.knexus.ergohabit.features.posture.presentation.components.*
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
+import com.knexus.ergohabit.features.posture.presentation.components.FilaEstadisticas
+import com.knexus.ergohabit.features.posture.presentation.components.HabitCard
+import com.knexus.ergohabit.features.posture.presentation.components.TarjetaSensor
 import com.knexus.ergohabit.features.posture.presentation.services.PostureForegroundService
+import com.knexus.ergohabit.features.posture.presentation.viewmodel.PosturaViewModel
+import com.knexus.ergohabit.ui.theme.BgMain
+import com.knexus.ergohabit.ui.theme.GreenPrimary
+import com.knexus.ergohabit.ui.theme.GreenProgress
+import com.knexus.ergohabit.ui.theme.PurpleAccent
+import com.knexus.ergohabit.ui.theme.TextPrimary
+import com.knexus.ergohabit.ui.theme.TextSecondary
 
 @Composable
-fun PostureScreen() {
+fun PostureScreen(
+    viewModel: PosturaViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
-    // Aquí es donde el ViewModel entrará en el futuro. Por ahora usamos un estado local.
-    var isSensorActive by remember { mutableStateOf(false) }
+    val estado by viewModel.estadoUi.collectAsState()
 
     Scaffold(
         containerColor = BgMain,
@@ -34,20 +51,24 @@ fun PostureScreen() {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
+
+            // ── SALUDO ────────────────────────────────────────
             Text(
                 text = "Buenos días, Carlos 👋",
-                fontSize = 26.sp, fontWeight = FontWeight.Black,
-                color = TextPrimary, modifier = Modifier.padding(bottom = 18.dp)
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Black,
+                color = TextPrimary,
+                modifier = Modifier.padding(bottom = 18.dp)
             )
 
-            // Usamos tu componente limpio y le pasamos la lógica
+            // ── SENSOR CARD ───────────────────────────────────
             TarjetaSensor(
-                isSensorActive = isSensorActive,
-                gradosInclinacion = 22,
+                isSensorActive = estado.estaMonitoreando,
+                gradosInclinacion = estado.anguloPitch.toInt(),
                 onToggleClick = {
-                    isSensorActive = !isSensorActive
+                    viewModel.alternarMonitoreo()
                     val intent = Intent(context, PostureForegroundService::class.java)
-                    if (isSensorActive) {
+                    if (!estado.estaMonitoreando) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             context.startForegroundService(intent)
                         } else {
@@ -61,19 +82,58 @@ fun PostureScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Aquí llamarías a tu componente de StatsRow
-            // TarjetaEstadisticaRow()
+            // ── STATS ROW ─────────────────────────────────────
+            FilaEstadisticas(vibraciones = estado.conteoVibraciones)
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // ── SECCIÓN MICRO-HÁBITOS ─────────────────────────
             Text(
                 text = "MICRO-HÁBITOS · 1 DE 4 COMPLETADOS",
-                fontSize = 11.sp, color = TextSecondary, letterSpacing = 0.06.sp,
-                fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp)
+                fontSize = 11.sp,
+                color = TextSecondary,
+                letterSpacing = 0.06.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Aquí llamarías a tus componentes HabitCard
-            // TarjetaHabito(emoji = "💧", name = "Agua", ...)
+            // ── HABIT CARDS ───────────────────────────────────
+            HabitCard(
+                emoji = "💧",
+                name = "Agua",
+                meta = "Meta: 8 vasos",
+                pct = 75,
+                pctColor = GreenPrimary,
+                progressColor = GreenProgress,
+                completed = false
+            )
+            HabitCard(
+                emoji = "🌙",
+                name = "Sueño",
+                meta = "Meta: 8 horas",
+                pct = 88,
+                pctColor = PurpleAccent,
+                progressColor = PurpleAccent,
+                completed = true
+            )
+            HabitCard(
+                emoji = "🏃",
+                name = "Ejercicio",
+                meta = "Meta: 30 min",
+                pct = 67,
+                pctColor = GreenPrimary,
+                progressColor = GreenProgress,
+                completed = false
+            )
+            HabitCard(
+                emoji = "🍎",
+                name = "Nutrición",
+                meta = "Meta: 3 comidas",
+                pct = 67,
+                pctColor = GreenPrimary,
+                progressColor = GreenProgress,
+                completed = false
+            )
         }
     }
 }

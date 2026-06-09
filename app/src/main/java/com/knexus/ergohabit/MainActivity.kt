@@ -15,7 +15,6 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // Permiso obligatorio para notificaciones y servicio
     private val lanzadorPermisos = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permisos ->
@@ -28,7 +27,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Solicitar permisos necesarios para Android 13+ y 14+
         val permisosASolicitar = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permisosASolicitar.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -36,7 +34,6 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             permisosASolicitar.add(Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE)
         }
-        
         if (permisosASolicitar.isNotEmpty()) {
             lanzadorPermisos.launch(permisosASolicitar.toTypedArray())
         }

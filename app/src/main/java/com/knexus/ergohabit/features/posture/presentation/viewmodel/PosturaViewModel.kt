@@ -12,11 +12,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Estado de la interfaz de usuario para la pantalla de postura.
- */
-
-
 @HiltViewModel
 class PosturaViewModel @Inject constructor(
     private val casoUsoPostura: PosturaUseCase,
@@ -41,14 +36,11 @@ class PosturaViewModel @Inject constructor(
         viewModelScope.launch {
             casoUsoPostura().collect { entidad ->
                 val esIncorrectaAhora = !entidad.esCorrecta
-                
-                // Si la postura pasa de correcta a incorrecta, contamos una vibración
                 if (esIncorrectaAhora && !vibrandoAnteriormente) {
                     _estadoUi.update { it.copy(conteoVibraciones = it.conteoVibraciones + 1) }
                 }
                 vibrandoAnteriormente = esIncorrectaAhora
-
-                _estadoUi.update { 
+                _estadoUi.update {
                     it.copy(
                         anguloPitch = entidad.anguloPitch,
                         anguloRoll = entidad.anguloRoll,
@@ -56,7 +48,6 @@ class PosturaViewModel @Inject constructor(
                         mensaje = entidad.mensaje
                     )
                 }
-                
                 if (!entidad.esCorrecta) {
                     gestorSonido.sonarAlerta()
                 } else {

@@ -1,5 +1,6 @@
 package com.knexus.ergohabit.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,39 +9,42 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val EsquemaOscuro = darkColorScheme(
-    primary = VerdePrimario,
-    secondary = MoradoAcento,
-    tertiary = NaranjaAcento,
-    background = TextoPrimario,
-    surface = TextoPrimario,
-    onPrimary = BlancoPuro,
-    onSecondary = BlancoPuro,
-    onTertiary = BlancoPuro,
-    onBackground = BlancoPuro,
-    onSurface = BlancoPuro
+private val DarkColorScheme = darkColorScheme(
+    primary = GreenPrimary,
+    secondary = PurpleAccent,
+    tertiary = OrangeAccent,
+    background = BgMain,
+    surface = BgWhite,
+    onPrimary = BgWhite,
+    onSecondary = BgWhite,
+    onTertiary = BgWhite,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary
 )
 
-private val EsquemaClaro = lightColorScheme(
-    primary = VerdePrimario,
-    secondary = MoradoAcento,
-    tertiary = NaranjaAcento,
-    background = FondoPrincipal,
-    surface = BlancoPuro,
-    onPrimary = BlancoPuro,
-    onSecondary = BlancoPuro,
-    onTertiary = BlancoPuro,
-    onBackground = TextoPrimario,
-    onSurface = TextoPrimario
+private val LightColorScheme = lightColorScheme(
+    primary = GreenPrimary,
+    secondary = PurpleAccent,
+    tertiary = OrangeAccent,
+    background = BgMain,
+    surface = BgWhite,
+    onPrimary = BgWhite,
+    onSecondary = BgWhite,
+    onTertiary = BgWhite,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary
 )
 
 @Composable
 fun ErgoHabitTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Colores dinámicos disponibles en Android 12+
-    dynamicColor: Boolean = false, // Lo ponemos en false para mantener tu identidad visual
+    dynamicColor: Boolean = false, // Desactivado para que use siempre tus colores personalizados
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -48,8 +52,16 @@ fun ErgoHabitTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> EsquemaOscuro
-        else -> EsquemaClaro
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = colorScheme.primary.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+        }
     }
 
     MaterialTheme(
