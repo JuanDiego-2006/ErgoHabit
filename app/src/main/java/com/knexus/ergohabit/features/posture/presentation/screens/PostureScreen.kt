@@ -35,7 +35,11 @@ import com.knexus.ergohabit.ui.theme.TextSecondary
 
 @Composable
 fun PostureScreen(
-    viewModel: PosturaViewModel = hiltViewModel()
+    viewModel: PosturaViewModel = hiltViewModel(),
+    onNavigateToHidratacion: () -> Unit = {},
+    onNavigateToSueno: () -> Unit = {},
+    onNavigateToActividad: () -> Unit = {},
+    onNavigateToNutricion: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val estado by viewModel.estadoUi.collectAsState()
@@ -51,8 +55,6 @@ fun PostureScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-
-            // ── SALUDO ────────────────────────────────────────
             Text(
                 text = "Buenos días, Carlos 👋",
                 fontSize = 26.sp,
@@ -61,7 +63,6 @@ fun PostureScreen(
                 modifier = Modifier.padding(bottom = 18.dp)
             )
 
-            // ── SENSOR CARD ───────────────────────────────────
             TarjetaSensor(
                 isSensorActive = estado.estaMonitoreando,
                 gradosInclinacion = estado.anguloPitch.toInt(),
@@ -81,13 +82,9 @@ fun PostureScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // ── STATS ROW ─────────────────────────────────────
             FilaEstadisticas(vibraciones = estado.conteoVibraciones)
-
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ── SECCIÓN MICRO-HÁBITOS ─────────────────────────
             Text(
                 text = "MICRO-HÁBITOS · 1 DE 4 COMPLETADOS",
                 fontSize = 11.sp,
@@ -97,7 +94,6 @@ fun PostureScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // ── HABIT CARDS ───────────────────────────────────
             HabitCard(
                 emoji = "💧",
                 name = "Agua",
@@ -105,7 +101,8 @@ fun PostureScreen(
                 pct = 75,
                 pctColor = GreenPrimary,
                 progressColor = GreenProgress,
-                completed = false
+                completed = false,
+                onClick = { onNavigateToHidratacion() }
             )
             HabitCard(
                 emoji = "🌙",
@@ -114,7 +111,8 @@ fun PostureScreen(
                 pct = 88,
                 pctColor = PurpleAccent,
                 progressColor = PurpleAccent,
-                completed = true
+                completed = true,
+                onClick = { onNavigateToSueno() }
             )
             HabitCard(
                 emoji = "🏃",
@@ -123,7 +121,8 @@ fun PostureScreen(
                 pct = 67,
                 pctColor = GreenPrimary,
                 progressColor = GreenProgress,
-                completed = false
+                completed = false,
+                onClick = { onNavigateToActividad() }
             )
             HabitCard(
                 emoji = "🍎",
@@ -132,7 +131,8 @@ fun PostureScreen(
                 pct = 67,
                 pctColor = GreenPrimary,
                 progressColor = GreenProgress,
-                completed = false
+                completed = false,
+                onClick = { onNavigateToNutricion() }
             )
         }
     }
