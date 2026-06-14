@@ -15,6 +15,7 @@ import com.knexus.ergohabit.features.posture.presentation.screens.PostureScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RegisterScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RetrasoSuenoScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.SuenoScreen
+import com.knexus.ergohabit.features.tareas.presentation.screens.TareaScreen
 
 @Composable
 fun GrafoNavegacion(navController: NavHostController) {
@@ -50,6 +51,7 @@ fun GrafoNavegacion(navController: NavHostController) {
 
         composable<NavRuta.Inicio> {
             PostureScreen(
+                navController = navController,
                 onNavigateToHidratacion = { navController.navigate(NavRuta.Hidratacion) },
                 onNavigateToSueno = { navController.navigate(NavRuta.Sueno) },
                 onNavigateToActividad = { navController.navigate(NavRuta.Actividad) },
@@ -109,6 +111,10 @@ fun GrafoNavegacion(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onComenzar = { navController.popBackStack() }
             )
+        }
+
+        composable<NavRuta.Tareas> {
+            TareaScreen(navController = navController)
         }
     }
 }

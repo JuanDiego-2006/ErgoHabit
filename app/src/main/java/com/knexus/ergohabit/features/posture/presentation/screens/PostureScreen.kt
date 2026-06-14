@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.posture.presentation.components.FilaEstadisticas
 import com.knexus.ergohabit.features.posture.presentation.components.HabitCard
@@ -35,6 +36,7 @@ import com.knexus.ergohabit.ui.theme.TextSecondary
 
 @Composable
 fun PostureScreen(
+    navController: NavHostController,
     viewModel: PosturaViewModel = hiltViewModel(),
     onNavigateToHidratacion: () -> Unit = {},
     onNavigateToSueno: () -> Unit = {},
@@ -46,7 +48,7 @@ fun PostureScreen(
 
     Scaffold(
         containerColor = BgMain,
-        bottomBar = { BarraNavegacionInferior() }
+        bottomBar = { BarraNavegacionInferior(navController) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
