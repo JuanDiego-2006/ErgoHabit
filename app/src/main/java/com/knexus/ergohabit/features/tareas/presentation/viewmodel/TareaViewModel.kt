@@ -87,8 +87,40 @@ class TareaViewModel @Inject constructor(
         _uiState.update { it.copy(nuevaDuracion = minutos, mostrarSelectorDuracion = false) }
     }
 
+    fun onNumeroPresionado(numero: String) {
+        _uiState.update { state ->
+            val actual = state.nuevaDuracionInput
+            // Solo permitimos 4 dígitos
+            val nuevo = (actual + numero).takeLast(4)
+            state.copy(nuevaDuracionInput = nuevo)
+        }
+    }
+
+    fun onBorrarPresionado() {
+        _uiState.update { state ->
+            val actual = state.nuevaDuracionInput
+            val nuevo = ("0" + actual.dropLast(1)).takeLast(4)
+            state.copy(nuevaDuracionInput = nuevo)
+        }
+    }
+
+    fun confirmarDuracion() {
+        val state = _uiState.value
+        val horas = state.nuevaDuracionInput.substring(0, 2).toIntOrNull() ?: 0
+        val minutos = state.nuevaDuracionInput.substring(2, 4).toIntOrNull() ?: 0
+        val totalMinutos = (horas * 60) + minutos
+        
+        _uiState.update { 
+            it.copy(
+                nuevaDuracion = if (totalMinutos > 0) totalMinutos else 1,
+                mostrarSelectorDuracion = false,
+                nuevaDuracionInput = "0000"
+            )
+        }
+    }
+
     fun mostrarSelectorDuracion(mostrar: Boolean) {
-        _uiState.update { it.copy(mostrarSelectorDuracion = mostrar) }
+        _uiState.update { it.copy(mostrarSelectorDuracion = mostrar, nuevaDuracionInput = "0000") }
     }
 
     fun agregarTarea() {

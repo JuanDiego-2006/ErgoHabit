@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
 import com.knexus.ergohabit.features.tareas.presentation.viewmodel.TareaViewModel
@@ -81,8 +84,10 @@ fun TareaScreen(
 
     if (uiState.mostrarSelectorDuracion) {
         SelectorDuracionDialog(
-            duracionActual = uiState.nuevaDuracion,
-            onDuracionChange = { viewModel.onDuracionCambiada(it) },
+            input = uiState.nuevaDuracionInput,
+            onNumeroClick = { viewModel.onNumeroPresionado(it) },
+            onBorrarClick = { viewModel.onBorrarPresionado() },
+            onConfirmar = { viewModel.confirmarDuracion() },
             onDismiss = { viewModel.mostrarSelectorDuracion(false) }
         )
     }
@@ -445,72 +450,142 @@ fun ItemCategoriaSeleccionable(
 
 @Composable
 fun SelectorDuracionDialog(
-    duracionActual: Int,
-    onDuracionChange: (Int) -> Unit,
+    input: String, // Formato HHMM
+    onNumeroClick: (String) -> Unit,
+    onBorrarClick: () -> Unit,
+    onConfirmar: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var duracion by remember { mutableIntStateOf(duracionActual) }
-
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Seleccionar Duración",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = TextPrimary // Fondo verde oscuro como en la imagen
+        ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
             ) {
-                Text(
-                    text = "$duracion min",
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MoradoAcento,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Slider(
-                    value = duracion.toFloat(),
-                    onValueChange = { duracion = it.toInt() },
-                    valueRange = 5f..120f,
-                    steps = 22, // Incrementos de 5 min (5, 10, 15... 120)
-                    colors = SliderDefaults.colors(
-                        thumbColor = MoradoAcento,
-                        activeTrackColor = MoradoAcento,
-                        inactiveTrackColor = BgMain
-                    )
-                )
-                
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("5 min", style = MaterialTheme.typography.bodySmall, color = TextGray)
-                    Text("120 min", style = MaterialTheme.typography.bodySmall, color = TextGray)
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar", color = BgMain.copy(alpha = 0.7f), fontSize = 16.sp)
+                    }
+                    Text(
+                        "DURACIÓN",
+                        color = BgMain,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        fontSize = 14.sp
+                    )
+                    TextButton(onClick = onConfirmar) {
+                        Text("Listo", color = BgMain.copy(alpha = 0.7f), fontSize = 16.sp)
+                    }
                 }
+
+                Spacer(modifier = Modifier.weight(0.5f))
+
+                // Time Display
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    val horas = input.substring(0, 2)
+                    val minutos = input.substring(2, 4)
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = horas,
+                            style = MaterialTheme.typography.displayLarge,
+                            color = GreenProgress,
+                            fontSize = 80.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text("h", color = GreenProgress.copy(alpha = 0.5f), fontSize = 16.sp)
+                    }
+                    
+                    Text(
+                        text = ":",
+                        style = MaterialTheme.typography.displayLarge,
+                        color = GreenProgress,
+                        fontSize = 80.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = minutos,
+                            style = MaterialTheme.typography.displayLarge,
+                            color = GreenProgress,
+                            fontSize = 80.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text("min", color = GreenProgress.copy(alpha = 0.5f), fontSize = 16.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(0.5f))
+
+                // Keyboard
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    val rows = listOf(
+                        listOf("1", "2", "3"),
+                        listOf("4", "5", "6"),
+                        listOf("7", "8", "9"),
+                        listOf("", "0", "backspace")
+                    )
+
+                    rows.forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            row.forEach { key ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clickable(enabled = key.isNotEmpty()) {
+                                            if (key == "backspace") onBorrarClick()
+                                            else onNumeroClick(key)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (key == "backspace") {
+                                        Icon(
+                                            Icons.Default.Backspace,
+                                            contentDescription = "Borrar",
+                                            tint = BgMain,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    } else if (key.isNotEmpty()) {
+                                        Text(
+                                            text = key,
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            color = BgMain,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(48.dp))
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onDuracionChange(duracion) },
-                colors = ButtonDefaults.buttonColors(containerColor = MoradoAcento)
-            ) {
-                Text("Confirmar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = TextGray)
-            }
-        },
-        shape = RoundedCornerShape(28.dp),
-        containerColor = BgWhite
-    )
+        }
+    }
 }
 
 @Composable

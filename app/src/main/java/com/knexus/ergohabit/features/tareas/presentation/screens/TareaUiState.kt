@@ -16,5 +16,6 @@ data class TareaUiState(
     val nuevoTitulo: String = "",
     val nuevaCategoriaId: Int = 1,
     val nuevaDuracion: Int = 45, // minutos
-    val mostrarSelectorDuracion: Boolean = false
+    val mostrarSelectorDuracion: Boolean = false,
+    val nuevaDuracionInput: String = "0000" // Formato HHMM
 )
