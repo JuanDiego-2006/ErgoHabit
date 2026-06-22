@@ -17,7 +17,10 @@ import javax.inject.Inject
 @HiltViewModel
 class TareaViewModel @Inject constructor(
     private val getTareasUseCase: GetTareasUseCase,
-    private val createTareaUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.CreateTareaUseCase
+    private val createTareaUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.CreateTareaUseCase,
+    private val completarTareaUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.CompletarTareaUseCase,
+    private val getMensajeExitoUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.GetMensajeExitoUseCase,
+    private val getCategoriasUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.GetCategoriasUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TareaUiState())
@@ -30,6 +33,7 @@ class TareaViewModel @Inject constructor(
     init {
         // Por ahora usamos un ID de usuario fijo para pruebas (ej: 1)
         loadTareas(1)
+        loadCategorias()
     }
 
     fun loadTareas(idUsuario: Int) {
@@ -40,6 +44,18 @@ class TareaViewModel @Inject constructor(
                     _uiState.update { it.copy(tareas = tareas, isLoading = false) }
                 }.onFailure { error ->
                     _uiState.update { it.copy(error = error.message, isLoading = false) }
+                }
+            }
+        }
+    }
+
+    fun loadCategorias() {
+        viewModelScope.launch {
+            getCategoriasUseCase().collect { result ->
+                result.onSuccess { categorias ->
+                    _uiState.update { it.copy(categorias = categorias) }
+                }.onFailure { error ->
+                    _uiState.update { it.copy(error = error.message) }
                 }
             }
         }
@@ -123,6 +139,60 @@ class TareaViewModel @Inject constructor(
         _uiState.update { it.copy(mostrarSelectorDuracion = mostrar, nuevaDuracionInput = "0000") }
     }
 
+    fun mostrarSheetCompletado(mostrar: Boolean) {
+        _uiState.update { it.copy(mostrarSheetCompletado = mostrar) }
+    }
+
+    fun mostrarSheetMasTiempo(mostrar: Boolean) {
+        _uiState.update { it.copy(mostrarSheetMasTiempo = mostrar, mostrarSheetCompletado = !mostrar) }
+    }
+
+    fun actualizarTiempoAdicional(minutos: Int) {
+        _uiState.update { it.copy(tiempoAdicional = minutos.coerceIn(15, 120)) }
+    }
+
+    fun completarTarea() {
+        val tarea = _uiState.value.tareaSeleccionada ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, mostrarSheetCompletado = false) }
+            completarTareaUseCase(tarea.id).collect { result ->
+                result.onSuccess {
+                    // Obtener mensaje de éxito de la API
+                    getMensajeExitoUseCase().collect { mensajeResult ->
+                        val mensaje = mensajeResult.getOrDefault("¡Felicidades! Tu dedicación te llevará lejos ⭐")
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                mostrarMensajeExito = true,
+                                mensajeExito = mensaje,
+                                tareaSeleccionada = null
+                            )
+                        }
+                        loadTareas(1)
+                    }
+                }.onFailure { error ->
+                    _uiState.update { it.copy(error = error.message, isLoading = false) }
+                }
+            }
+        }
+    }
+
+    fun descartarMensajeExito() {
+        _uiState.update { it.copy(mostrarMensajeExito = false) }
+    }
+
+    fun agregarMasTiempo(minutos: Int) {
+        _uiState.update { 
+            it.copy(
+                mostrarSheetMasTiempo = false,
+                tiempoRestante = minutos * 60,
+                isTimerRunning = true,
+                tiempoAdicional = minutos
+            ) 
+        }
+        startTimer()
+    }
+
     fun agregarTarea() {
         val currentState = _uiState.value
         val nuevaTarea = com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque(
@@ -163,7 +233,7 @@ class TareaViewModel @Inject constructor(
 
                 _uiState.update { it.copy(tiempoRestante = it.tiempoRestante - 1) }
             }
-            _uiState.update { it.copy(isTimerRunning = false) }
+            _uiState.update { it.copy(isTimerRunning = false, mostrarSheetCompletado = true) }
         }
     }
 

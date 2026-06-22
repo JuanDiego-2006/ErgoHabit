@@ -1,5 +1,6 @@
 package com.knexus.ergohabit.features.tareas.data.datasource.api
 
+import com.knexus.ergohabit.features.tareas.data.models.CategoriaDto
 import com.knexus.ergohabit.features.tareas.data.models.TareaDto
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -12,4 +13,13 @@ interface TareaApi {
 
     @POST("tareas")
     suspend fun createTarea(@Body tarea: TareaDto): TareaDto
+
+    @GET("tareas/mensaje-exito")
+    suspend fun getMensajeExito(): Map<String, String>
+
+    @POST("tareas/{idTarea}/completar")
+    suspend fun completarTarea(@Path("idTarea") idTarea: Int): TareaDto
+
+    @GET("categorias")
+    suspend fun getCategorias(): List<CategoriaDto>
 }

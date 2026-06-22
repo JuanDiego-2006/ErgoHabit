@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.knexus.ergohabit.features.auth.presentation.screens.LoginScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.ActividadScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.ConfigHorarioScreen
@@ -15,6 +16,7 @@ import com.knexus.ergohabit.features.posture.presentation.screens.PostureScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RegisterScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RetrasoSuenoScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.SuenoScreen
+import com.knexus.ergohabit.features.progreso.presentation.screens.ProgresoScreen
 import com.knexus.ergohabit.features.tareas.presentation.screens.TareaScreen
 
 @Composable
@@ -23,6 +25,7 @@ fun GrafoNavegacion(navController: NavHostController) {
         navController = navController,
         startDestination = NavRuta.Login
     ) {
+        // ... (otros composables)
         composable<NavRuta.Login> {
             LoginScreen(
                 onNavigateToRegister = { navController.navigate(NavRuta.Register) },
@@ -38,7 +41,7 @@ fun GrafoNavegacion(navController: NavHostController) {
             RegisterScreen(
                 onNavigateToLogin = {
                     navController.navigate(NavRuta.Login) {
-                        popUpTo(NavRuta.Register) { inclusive = true }
+                        popUpTo(NavRuta.Login) { inclusive = true }
                     }
                 },
                 onNavigateToHome = {
@@ -113,8 +116,16 @@ fun GrafoNavegacion(navController: NavHostController) {
             )
         }
 
-        composable<NavRuta.Tareas> {
-            TareaScreen(navController = navController)
+        composable<NavRuta.Tareas> { backStackEntry ->
+            val tareas: NavRuta.Tareas = backStackEntry.toRoute()
+            TareaScreen(
+                navController = navController,
+                mostrarCompletadoInicial = tareas.mostrarCompletado
+            )
+        }
+
+        composable<NavRuta.Progreso> {
+            ProgresoScreen(navController = navController)
         }
     }
 }
