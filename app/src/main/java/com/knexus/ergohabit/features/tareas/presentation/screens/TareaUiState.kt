@@ -1,28 +1,31 @@
 package com.knexus.ergohabit.features.tareas.presentation.screens
 
-import com.knexus.ergohabit.features.tareas.domain.entities.CategoriaTarea
 import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
+import com.knexus.ergohabit.features.tareas.domain.entities.TareasEstado
 
 data class TareaUiState(
     val isLoading: Boolean = false,
-    val tareas: List<TareaEnfoque> = emptyList(),
-    val categorias: List<CategoriaTarea> = emptyList(),
-    val tareaSeleccionada: TareaEnfoque? = null,
+    val tareasEstado: TareasEstado? = null,
     val error: String? = null,
-    val tiempoRestante: Int = 0, // En segundos para el cronómetro
+    
+    // Timer
+    val tareaSeleccionada: TareaEnfoque? = null,
+    val tiempoRestante: Int = 0, // En segundos
     val isTimerRunning: Boolean = false,
     val mostrarRecordatorioEstiramiento: Boolean = false,
     
-    // Estado para Nueva Tarea
+    // Nueva Tarea
     val mostrarSheetNuevaTarea: Boolean = false,
     val nuevoTitulo: String = "",
-    val nuevaCategoriaId: Int = 1,
-    val nuevaDuracion: Int = 45, // minutos
+    val nuevaCategoriaNombre: String = "Académica",
+    val nuevaDuracion: Int = 45, // Minutos
     val mostrarSelectorDuracion: Boolean = false,
-    val nuevaDuracionInput: String = "0000", // Formato HHMM
+    val nuevaDuracionInput: String = "0000",
+    
+    // Completado
     val mostrarSheetCompletado: Boolean = false,
     val mostrarSheetMasTiempo: Boolean = false,
-    val tiempoAdicional: Int = 30, // Minutos
+    val tiempoAdicional: Int = 15,
     val mostrarMensajeExito: Boolean = false,
     val mensajeExito: String = ""
 )

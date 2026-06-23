@@ -3,6 +3,9 @@ package com.knexus.ergohabit.features.tareas.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knexus.ergohabit.features.tareas.domain.usecases.GetTareasUseCase
+import com.knexus.ergohabit.features.tareas.domain.usecases.CreateTareaUseCase
+import com.knexus.ergohabit.features.tareas.domain.usecases.CompletarTareaUseCase
+import com.knexus.ergohabit.features.tareas.domain.usecases.GetMensajeExitoUseCase
 import com.knexus.ergohabit.features.tareas.presentation.screens.TareaUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -17,10 +20,9 @@ import javax.inject.Inject
 @HiltViewModel
 class TareaViewModel @Inject constructor(
     private val getTareasUseCase: GetTareasUseCase,
-    private val createTareaUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.CreateTareaUseCase,
-    private val completarTareaUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.CompletarTareaUseCase,
-    private val getMensajeExitoUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.GetMensajeExitoUseCase,
-    private val getCategoriasUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.GetCategoriasUseCase
+    private val createTareaUseCase: CreateTareaUseCase,
+    private val completarTareaUseCase: CompletarTareaUseCase,
+    private val getMensajeExitoUseCase: GetMensajeExitoUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TareaUiState())
@@ -31,31 +33,17 @@ class TareaViewModel @Inject constructor(
     private val INTERVALO_ESTIRAMIENTO = 25 * 60
 
     init {
-        // Por ahora usamos un ID de usuario fijo para pruebas (ej: 1)
-        loadTareas(1)
-        loadCategorias()
+        loadTareas()
     }
 
-    fun loadTareas(idUsuario: Int) {
+    fun loadTareas() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            getTareasUseCase(idUsuario).collect { result ->
-                result.onSuccess { tareas ->
-                    _uiState.update { it.copy(tareas = tareas, isLoading = false) }
+            getTareasUseCase().collect { result ->
+                result.onSuccess { estado ->
+                    _uiState.update { it.copy(tareasEstado = estado, isLoading = false) }
                 }.onFailure { error ->
                     _uiState.update { it.copy(error = error.message, isLoading = false) }
-                }
-            }
-        }
-    }
-
-    fun loadCategorias() {
-        viewModelScope.launch {
-            getCategoriasUseCase().collect { result ->
-                result.onSuccess { categorias ->
-                    _uiState.update { it.copy(categorias = categorias) }
-                }.onFailure { error ->
-                    _uiState.update { it.copy(error = error.message) }
                 }
             }
         }
@@ -66,7 +54,7 @@ class TareaViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 tareaSeleccionada = tarea,
-                tiempoRestante = tarea.duracionTarea * 60,
+                tiempoRestante = tarea.duracionMinutos * 60,
                 isTimerRunning = false,
                 mostrarRecordatorioEstiramiento = false
             ) 
@@ -84,7 +72,7 @@ class TareaViewModel @Inject constructor(
 
     fun descartarRecordatorio() {
         _uiState.update { it.copy(mostrarRecordatorioEstiramiento = false) }
-        segundosTranscurridos = 0 // Reiniciamos el contador para el próximo recordatorio
+        segundosTranscurridos = 0
     }
 
     fun mostrarSheetNuevaTarea(mostrar: Boolean) {
@@ -95,8 +83,8 @@ class TareaViewModel @Inject constructor(
         _uiState.update { it.copy(nuevoTitulo = titulo) }
     }
 
-    fun onCategoriaSeleccionada(id: Int) {
-        _uiState.update { it.copy(nuevaCategoriaId = id) }
+    fun onCategoriaSeleccionada(nombre: String) {
+        _uiState.update { it.copy(nuevaCategoriaNombre = nombre) }
     }
 
     fun onDuracionCambiada(minutos: Int) {
@@ -106,7 +94,6 @@ class TareaViewModel @Inject constructor(
     fun onNumeroPresionado(numero: String) {
         _uiState.update { state ->
             val actual = state.nuevaDuracionInput
-            // Solo permitimos 4 dígitos
             val nuevo = (actual + numero).takeLast(4)
             state.copy(nuevaDuracionInput = nuevo)
         }
@@ -155,24 +142,20 @@ class TareaViewModel @Inject constructor(
         val tarea = _uiState.value.tareaSeleccionada ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, mostrarSheetCompletado = false) }
-            completarTareaUseCase(tarea.id).collect { result ->
-                result.onSuccess {
-                    // Obtener mensaje de éxito de la API
-                    getMensajeExitoUseCase().collect { mensajeResult ->
-                        val mensaje = mensajeResult.getOrDefault("¡Felicidades! Tu dedicación te llevará lejos ⭐")
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                mostrarMensajeExito = true,
-                                mensajeExito = mensaje,
-                                tareaSeleccionada = null
-                            )
-                        }
-                        loadTareas(1)
-                    }
-                }.onFailure { error ->
-                    _uiState.update { it.copy(error = error.message, isLoading = false) }
+            completarTareaUseCase(tarea.id).onSuccess {
+                val mensajeResult = getMensajeExitoUseCase()
+                val mensaje = mensajeResult.getOrDefault("¡Tarea completada con éxito! 🌿")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        mostrarMensajeExito = true,
+                        mensajeExito = mensaje,
+                        tareaSeleccionada = null
+                    )
                 }
+                loadTareas()
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.message, isLoading = false) }
             }
         }
     }
@@ -195,25 +178,18 @@ class TareaViewModel @Inject constructor(
 
     fun agregarTarea() {
         val currentState = _uiState.value
-        val nuevaTarea = com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque(
-            id = 0, // El servidor debería generar el ID
-            idUsuario = 1, // ID fijo por ahora
-            idEstado = 1, // Pendiente
-            titulo = currentState.nuevoTitulo,
-            duracionTarea = currentState.nuevaDuracion,
-            idCategoria = currentState.nuevaCategoriaId,
-            fechaCreacion = "" // El servidor debería manejar esto o podemos enviar la actual
-        )
-
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, mostrarSheetNuevaTarea = false) }
-            createTareaUseCase(nuevaTarea).collect { result ->
-                result.onSuccess {
-                    loadTareas(1) // Recargar la lista
-                    _uiState.update { it.copy(nuevoTitulo = "", nuevaDuracion = 45) }
-                }.onFailure { error ->
-                    _uiState.update { it.copy(error = error.message, isLoading = false) }
-                }
+            createTareaUseCase(
+                titulo = currentState.nuevoTitulo,
+                categoria = currentState.nuevaCategoriaNombre,
+                duracionMinutos = currentState.nuevaDuracion
+            ).onSuccess {
+                loadTareas()
+                _uiState.update { it.copy(nuevoTitulo = "", nuevaDuracion = 45) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.message, isLoading = false) }
             }
         }
     }

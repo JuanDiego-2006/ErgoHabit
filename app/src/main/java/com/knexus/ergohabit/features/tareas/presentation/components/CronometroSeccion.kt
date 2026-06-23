@@ -30,7 +30,7 @@ fun CronometroSeccion(
     isRunning: Boolean,
     onToggleTimer: () -> Unit
 ) {
-    val totalSegundos = (tarea?.duracionTarea ?: 45) * 60
+    val totalSegundos = (tarea?.duracionMinutos ?: 45) * 60
     val progreso = if (totalSegundos > 0) tiempoRestante.toFloat() / totalSegundos else 0f
 
     Surface(
@@ -47,17 +47,17 @@ fun CronometroSeccion(
             if (tarea != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = when(tarea.idCategoria) {
-                            1 -> "🎓"
-                            2 -> "🧘"
-                            3 -> "🧠"
+                        text = when(tarea.categoria) {
+                            "Académica" -> "🎓"
+                            "Bienestar", "Salud" -> "🧘"
+                            "Enfoque", "Trabajo" -> "🧠"
                             else -> "📌"
                         },
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Académica", // Por ahora estático o buscar en uiState
+                        text = tarea.categoria,
                         style = MaterialTheme.typography.labelMedium,
                         color = TextGray,
                         fontWeight = FontWeight.Bold

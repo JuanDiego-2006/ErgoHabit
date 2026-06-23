@@ -78,8 +78,9 @@ fun TareaScreen(
             SheetNuevaTarea(
                 titulo = uiState.nuevoTitulo,
                 onTituloChange = { viewModel.onTituloCambiado(it) },
-                categorias = uiState.categorias,
-                categoriaId = uiState.nuevaCategoriaId,
+                // Usamos categorías fijas ya que no hay endpoint
+                categoriasNombres = listOf("Académica", "Trabajo", "Personal", "Salud"),
+                categoriaSeleccionada = uiState.nuevaCategoriaNombre,
                 onCategoriaSelect = { viewModel.onCategoriaSeleccionada(it) },
                 duracionMinutos = uiState.nuevaDuracion,
                 onDuracionClick = { viewModel.mostrarSelectorDuracion(true) },
@@ -178,9 +179,8 @@ fun TareaScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            val tareasPendientes = uiState.tareas.count { it.idEstado != 2 }
             Text(
-                text = "PENDIENTES · $tareasPendientes",
+                text = uiState.tareasEstado?.totalPendientesText ?: "CARGANDO TAREAS...",
                 style = MaterialTheme.typography.labelMedium,
                 color = TextGray,
                 fontWeight = FontWeight.Bold
@@ -188,23 +188,46 @@ fun TareaScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Lista de Tareas (Componente ItemTarea es tonto)
+            // Lista de Tareas
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(uiState.tareas) { tarea ->
-                    ItemTarea(
-                        tarea = tarea,
-                        isSelected = uiState.tareaSeleccionada?.id == tarea.id,
-                        onClick = { viewModel.seleccionarTarea(tarea) }
+                uiState.tareasEstado?.pendientes?.let { pendientes ->
+                    items(pendientes) { tarea ->
+                        ItemTarea(
+                            tarea = tarea,
+                            isSelected = uiState.tareaSeleccionada?.id == tarea.id,
+                            onClick = { viewModel.seleccionarTarea(tarea) }
+                        )
+                    }
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = uiState.tareasEstado?.totalCompletadasText ?: "",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextGray,
+                        fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                uiState.tareasEstado?.completadas?.let { completadas ->
+                    items(completadas) { tarea ->
+                        ItemTarea(
+                            tarea = tarea,
+                            isSelected = uiState.tareaSeleccionada?.id == tarea.id,
+                            onClick = { viewModel.seleccionarTarea(tarea) }
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Sección Cronómetro (Componente Tonto)
+            // Sección Cronómetro
             CronometroSeccion(
                 tarea = uiState.tareaSeleccionada,
                 tiempoRestante = uiState.tiempoRestante,

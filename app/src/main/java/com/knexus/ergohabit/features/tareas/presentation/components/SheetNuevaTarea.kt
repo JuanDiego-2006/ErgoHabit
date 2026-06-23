@@ -3,8 +3,6 @@ package com.knexus.ergohabit.features.tareas.presentation.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,16 +19,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.knexus.ergohabit.features.tareas.domain.entities.CategoriaTarea
 import com.knexus.ergohabit.ui.theme.*
 
 @Composable
 fun SheetNuevaTarea(
     titulo: String,
     onTituloChange: (String) -> Unit,
-    categorias: List<CategoriaTarea>,
-    categoriaId: Int,
-    onCategoriaSelect: (Int) -> Unit,
+    categoriasNombres: List<String>,
+    categoriaSeleccionada: String,
+    onCategoriaSelect: (String) -> Unit,
     duracionMinutos: Int,
     onDuracionClick: () -> Unit,
     onAgregarClick: () -> Unit,
@@ -102,12 +99,18 @@ fun SheetNuevaTarea(
         Spacer(modifier = Modifier.height(12.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            categorias.forEach { categoria ->
+            categoriasNombres.forEach { nombre ->
                 ItemCategoriaSeleccionable(
-                    nombre = categoria.nombre,
-                    icono = categoria.icono,
-                    isSelected = categoriaId == categoria.id,
-                    onClick = { onCategoriaSelect(categoria.id) }
+                    nombre = nombre,
+                    icono = when(nombre) {
+                        "Académica" -> "📚"
+                        "Trabajo" -> "💻"
+                        "Personal" -> "👤"
+                        "Salud" -> "🧘"
+                        else -> "📌"
+                    },
+                    isSelected = categoriaSeleccionada == nombre,
+                    onClick = { onCategoriaSelect(nombre) }
                 )
             }
         }
@@ -178,10 +181,10 @@ fun SheetNuevaTarea(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = GreenPrimary.copy(alpha = 0.3f), // Color clarito como la imagen
+                containerColor = GreenPrimary.copy(alpha = 0.3f),
                 contentColor = Color.White
             ),
-            shape = RoundedCornerShape(28.dp), // Muy redondeado
+            shape = RoundedCornerShape(28.dp),
             enabled = titulo.isNotBlank()
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

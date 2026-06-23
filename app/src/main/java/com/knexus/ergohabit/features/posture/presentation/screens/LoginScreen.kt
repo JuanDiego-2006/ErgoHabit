@@ -36,6 +36,15 @@ fun LoginScreen(
     val state by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(0) } // 0 = Iniciar Sesión, 1 = Registrarse
 
+    // --- CAMBIO REALIZADO: Observar el éxito del login para navegar ---
+    LaunchedEffect(state.isLoginSuccess) {
+        if (state.isLoginSuccess) {
+            onNavigateToHome()
+            viewModel.resetNavigation()
+        }
+    }
+    // ------------------------------------------------------------------
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -215,12 +224,25 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // --- CAMBIO REALIZADO: Mostrar mensaje de error si existe ---
+                    if (state.errorMessage != null) {
+                        Text(
+                            text = state.errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+                    // ------------------------------------------------------------
+
                     // ── BOTÓN INICIAR SESIÓN ──────────────────
                     Button(
                         onClick = {
+                            // --- CAMBIO REALIZADO: Solo llamar al login, la navegación se maneja en el LaunchedEffect ---
                             viewModel.onLoginClick()
-                            onNavigateToHome()
+                            // ------------------------------------------------------------------------------------------
                         },
+                        enabled = !state.isLoading, // Deshabilitar si está cargando
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = GreenPrimary
@@ -229,12 +251,20 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .height(52.dp)
                     ) {
-                        Text(
-                            text = "Iniciar Sesión",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Iniciar Sesión",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

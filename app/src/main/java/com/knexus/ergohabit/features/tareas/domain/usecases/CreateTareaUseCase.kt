@@ -2,13 +2,12 @@ package com.knexus.ergohabit.features.tareas.domain.usecases
 
 import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
 import com.knexus.ergohabit.features.tareas.domain.repositories.TareaRepository
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class CreateTareaUseCase @Inject constructor(
     private val repository: TareaRepository
 ) {
-    operator fun invoke(tarea: TareaEnfoque): Flow<Result<TareaEnfoque>> {
-        return repository.createTarea(tarea)
+    suspend operator fun invoke(titulo: String, categoria: String, duracionMinutos: Int): Result<TareaEnfoque> {
+        return repository.createTarea(titulo, categoria, duracionMinutos)
     }
 }

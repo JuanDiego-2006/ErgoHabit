@@ -5,6 +5,7 @@ import com.knexus.ergohabit.features.progreso.data.mapper.toDomain
 import com.knexus.ergohabit.features.progreso.domain.entities.DetalleHabito
 import com.knexus.ergohabit.features.progreso.domain.entities.HabitoProgreso
 import com.knexus.ergohabit.features.progreso.domain.entities.ProgresoDia
+import com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito
 import com.knexus.ergohabit.features.progreso.domain.repositories.ProgresoRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -39,55 +40,86 @@ class ProgresoRepositoryImpl @Inject constructor(
             val response = api.getDetalleHabito(idUsuario, idHabito)
             emit(Result.success(response.toDomain()))
         } catch (e: Exception) {
-            // Datos de prueba para desarrollo si la API falla
+            // Lógica: Semana actual (Lunes a Domingo) para mantener el orden solicitado
+            val diasSemana = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+            val calendar = java.util.Calendar.getInstance()
+            
+            // Obtener el índice del día actual (Lunes = 0, ..., Domingo = 6)
+            val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+            val todayIndex = when (dayOfWeek) {
+                java.util.Calendar.MONDAY -> 0
+                java.util.Calendar.TUESDAY -> 1
+                java.util.Calendar.WEDNESDAY -> 2
+                java.util.Calendar.THURSDAY -> 3
+                java.util.Calendar.FRIDAY -> 4
+                java.util.Calendar.SATURDAY -> 5
+                java.util.Calendar.SUNDAY -> 6
+                else -> 0
+            }
+
+            val registrosDinamicos = (0..6).map { i ->
+                val nombreDia = if (i == todayIndex) "Hoy" else diasSemana[i]
+                
+                // Valores de prueba realistas
+                val valor = when(idHabito) {
+                    1 -> (60..95).random() / 10f // Sueño: 6.0 a 9.5h
+                    2 -> (12..25).random() / 10f // Hidratación: 1.2 a 2.5L
+                    3 -> (20..110).random() / 10f // Ejercicio: 2.0 a 11.0km
+                    4 -> (1..10).random().toFloat() // Postura: 1 a 10 alertas
+                    else -> (15..50).random().toFloat()
+                }
+                val meta = when(idHabito) {
+                    1 -> 8f
+                    2 -> 2f
+                    3 -> 8f 
+                    4 -> 0f // Para alertas, 0 es lo ideal
+                    else -> 30f
+                }
+                // Para postura, cualquier alerta se marca en rojo (o invertimos la lógica)
+                val cumplida = if(idHabito == 4) false else valor >= meta
+                RegistroHabito(nombreDia, valor, cumplida)
+            }
+
             val mockDetalle = when(idHabito) {
                 1 -> DetalleHabito(
                     idHabito = 1,
                     titulo = "HORAS DE SUEÑO",
                     metaValor = 8f,
-                    registros = listOf(
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Lun", 6.5f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Mar", 8.2f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Mié", 5.8f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Jue", 8.5f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Vie", 7.0f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Sáb", 9.1f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Hoy", 7.3f, false)
-                    ),
+                    registros = registrosDinamicos,
                     leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta sin cumplir"
+                    leyendaNegativa = "Rojo = meta no cumplida"
                 )
                 2 -> DetalleHabito(
                     idHabito = 2,
-                    titulo = "HIDRATACIÓN (ML)",
+                    titulo = "HIDRATACIÓN (L)",
                     metaValor = 2f,
-                    registros = listOf(
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Lun", 1.2f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Mar", 2.1f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Mié", 1.5f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Jue", 2.3f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Vie", 1.8f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Sáb", 2.2f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Hoy", 1.4f, false)
-                    ),
+                    registros = registrosDinamicos,
                     leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta sin cumplir"
+                    leyendaNegativa = "Rojo = meta no cumplida"
+                )
+                3 -> DetalleHabito(
+                    idHabito = 3,
+                    titulo = "DISTANCIA RECORRIDA (KM)",
+                    metaValor = 8f,
+                    registros = registrosDinamicos,
+                    leyendaPositiva = "Verde = meta cumplida",
+                    leyendaNegativa = "Rojo = meta no cumplida"
+                )
+                4 -> DetalleHabito(
+                    idHabito = 4,
+                    titulo = "ALERTAS DE POSTURA",
+                    metaValor = 0f,
+                    registros = registrosDinamicos,
+                    leyendaPositiva = "", 
+                    leyendaNegativa = "Menos alertas ⚠️ = mejor postura durante la semana 📉"
                 )
                 else -> DetalleHabito(
                     idHabito = idHabito,
                     titulo = "ACTIVIDAD",
                     metaValor = 30f,
-                    registros = listOf(
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Lun", 45f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Mar", 20f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Mié", 35f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Jue", 30f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Vie", 15f, false),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Sáb", 60f, true),
-                        com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito("Hoy", 40f, true)
-                    ),
+                    registros = registrosDinamicos,
                     leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta sin cumplir"
+                    leyendaNegativa = "Rojo = meta no cumplida"
                 )
             }
             emit(Result.success(mockDetalle))

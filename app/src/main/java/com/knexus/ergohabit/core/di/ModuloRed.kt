@@ -1,9 +1,11 @@
 package com.knexus.ergohabit.core.di
 
+import com.knexus.ergohabit.core.session.SessionManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -16,12 +18,26 @@ object ModuloRed {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        val interceptor = HttpLoggingInterceptor().apply {
+    fun provideOkHttpClient(sessionManager: SessionManager): OkHttpClient {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
+
+        val authInterceptor = Interceptor { chain ->
+            val originalRequest = chain.request()
+            val token = sessionManager.fetchAuthToken()
+
+            val requestBuilder = originalRequest.newBuilder()
+            if (token != null) {
+                requestBuilder.header("Authorization", "Bearer $token")
+            }
+
+            chain.proceed(requestBuilder.build())
+        }
+
         return OkHttpClient.Builder()
-            .addInterceptor(interceptor)
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor(authInterceptor)
             .build()
     }
 
@@ -29,7 +45,7 @@ object ModuloRed {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.ergohabit.com/")
+            .baseUrl("http://10.14.0.211:8080/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

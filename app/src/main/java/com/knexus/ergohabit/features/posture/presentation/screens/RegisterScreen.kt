@@ -36,6 +36,15 @@ fun RegisterScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    // --- CAMBIO REALIZADO: Observar el éxito del registro para navegar ---
+    LaunchedEffect(state.isRegisterSuccess) {
+        if (state.isRegisterSuccess) {
+            onNavigateToLogin()
+            viewModel.resetNavigation()
+        }
+    }
+    // ---------------------------------------------------------------------
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -292,24 +301,45 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // --- CAMBIO REALIZADO: Mostrar mensaje de error si existe ---
+                    if (state.errorMessage != null) {
+                        Text(
+                            text = state.errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+                    // ------------------------------------------------------------
+
                     // ── BOTÓN CREAR CUENTA ────────────────────
                     Button(
                         onClick = {
+                            // --- CAMBIO REALIZADO: Solo llamar a crear cuenta, la navegación se maneja en el LaunchedEffect ---
                             viewModel.onCrearCuenta()
-                            onNavigateToHome()
+                            // ---------------------------------------------------------------------------------------------
                         },
+                        enabled = !state.isLoading,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
                     ) {
-                        Text(
-                            text = "Crear Cuenta",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Crear Cuenta",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

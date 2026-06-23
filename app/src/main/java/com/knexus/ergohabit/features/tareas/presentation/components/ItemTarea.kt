@@ -27,10 +27,10 @@ fun ItemTarea(
     onClick: () -> Unit
 ) {
     val isCompletada = tarea.idEstado == 2
-    val categoryColor = when(tarea.idCategoria) {
-        1 -> MoradoAcento
-        2 -> GreenPrimary
-        3 -> PurpleAccent
+    val categoryColor = when(tarea.categoria) {
+        "Académica" -> MoradoAcento
+        "Bienestar", "Salud" -> GreenPrimary
+        "Enfoque", "Trabajo" -> PurpleAccent
         else -> OrangeAccent
     }
 
@@ -67,22 +67,17 @@ fun ItemTarea(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = when(tarea.idCategoria) {
-                            1 -> "🎓"
-                            2 -> "🧘"
-                            3 -> "🧠"
+                        text = when(tarea.categoria) {
+                            "Académica" -> "🎓"
+                            "Bienestar", "Salud" -> "🧘"
+                            "Enfoque", "Trabajo" -> "🧠"
                             else -> "📌"
                         },
                         fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = when(tarea.idCategoria) {
-                            1 -> "Académica"
-                            2 -> "Bienestar"
-                            3 -> "Enfoque Profundo"
-                            else -> "General"
-                        },
+                        text = tarea.categoria,
                         style = MaterialTheme.typography.bodySmall,
                         color = TextGray
                     )

@@ -2,10 +2,16 @@ package com.knexus.ergohabit.features.tareas.domain.entities
 
 data class TareaEnfoque(
     val id: Int,
-    val idUsuario: Int,
-    val idEstado: Int,
     val titulo: String,
-    val duracionTarea: Int,
-    val idCategoria: Int,
-    val fechaCreacion: String
+    val categoria: String,
+    val duracionText: String,
+    val idEstado: Int,
+    val duracionMinutos: Int = 0 // Usado para el temporizador
+)
+
+data class TareasEstado(
+    val pendientes: List<TareaEnfoque>,
+    val completadas: List<TareaEnfoque>,
+    val totalPendientesText: String,
+    val totalCompletadasText: String
 )

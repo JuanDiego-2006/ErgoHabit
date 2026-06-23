@@ -17,6 +17,7 @@ import com.knexus.ergohabit.features.posture.presentation.screens.RegisterScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RetrasoSuenoScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.SuenoScreen
 import com.knexus.ergohabit.features.progreso.presentation.screens.ProgresoScreen
+import com.knexus.ergohabit.features.perfil.presentation.screens.PerfilScreen
 import com.knexus.ergohabit.features.tareas.presentation.screens.TareaScreen
 
 @Composable
@@ -126,6 +127,10 @@ fun GrafoNavegacion(navController: NavHostController) {
 
         composable<NavRuta.Progreso> {
             ProgresoScreen(navController = navController)
+        }
+
+        composable<NavRuta.Perfil> {
+            PerfilScreen(navController = navController)
         }
     }
 }

@@ -1,13 +1,12 @@
 package com.knexus.ergohabit.features.tareas.domain.repositories
 
-import com.knexus.ergohabit.features.tareas.domain.entities.CategoriaTarea
 import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
+import com.knexus.ergohabit.features.tareas.domain.entities.TareasEstado
 import kotlinx.coroutines.flow.Flow
 
 interface TareaRepository {
-    fun getTareas(idUsuario: Int): Flow<Result<List<TareaEnfoque>>>
-    fun createTarea(tarea: TareaEnfoque): Flow<Result<TareaEnfoque>>
-    fun completarTarea(idTarea: Int): Flow<Result<TareaEnfoque>>
-    fun getMensajeExito(): Flow<Result<String>>
-    fun getCategorias(): Flow<Result<List<CategoriaTarea>>>
+    fun getTareas(): Flow<Result<TareasEstado>>
+    suspend fun createTarea(titulo: String, categoria: String, duracionMinutos: Int): Result<TareaEnfoque>
+    suspend fun completarTarea(idTarea: Int): Result<TareaEnfoque>
+    suspend fun getMensajeExito(): Result<String>
 }

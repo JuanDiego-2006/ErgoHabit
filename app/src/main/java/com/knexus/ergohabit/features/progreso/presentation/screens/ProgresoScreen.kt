@@ -3,12 +3,8 @@ package com.knexus.ergohabit.features.progreso.presentation.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -20,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,7 +76,7 @@ fun ProgresoScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Detalle del Hábito Seleccionado (Ej: Sueño o Agua)
+            // Detalle del Hábito Seleccionado (Ej: Sueño, Agua, Postura)
             uiState.detalleHabito?.let { detalle ->
                 DetalleHabitoCard(detalle)
                 Spacer(modifier = Modifier.height(24.dp))
@@ -174,9 +169,10 @@ fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: (
 
 @Composable
 fun DetalleHabitoCard(detalle: DetalleHabito) {
-    // Título dinámico para evitar duplicados y normalizar el separador
+    // Título dinámico
     val tituloGrafica = when(detalle.idHabito) {
-        2 -> "HIDRATACIÓN (ML) · ÚLTIMOS 7 DÍAS"
+        2 -> "HIDRATACIÓN (L) · ÚLTIMOS 7 DÍAS"
+        4 -> "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
         else -> "${detalle.titulo.uppercase()} · ÚLTIMOS 7 DÍAS"
     }
 
@@ -203,47 +199,58 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Línea de Meta y Leyenda
+            // Línea de Meta (solo si no es postura) y Leyenda
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Canvas(modifier = Modifier.fillMaxWidth().height(1.dp)) {
-                        drawLine(
-                            color = Color.LightGray.copy(alpha = 0.5f),
-                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                            end = androidx.compose.ui.geometry.Offset(size.width, 0f),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                if (detalle.idHabito != 4) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Canvas(modifier = Modifier.fillMaxWidth().height(1.dp)) {
+                            drawLine(
+                                color = Color.LightGray.copy(alpha = 0.5f),
+                                start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                            )
+                        }
+                        Text(
+                            text = "META",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF5E9C76),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.background(Color.White).padding(horizontal = 8.dp)
                         )
                     }
-                    Text(
-                        text = "META",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF5E9C76),
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.background(Color.White).padding(horizontal = 8.dp)
-                    )
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
-                
-                Spacer(modifier = Modifier.height(20.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    CircleDot(Color(0xFF5CB38C))
-                    Text(
-                        text = "Verde = meta cumplida",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFB0B0B0),
-                        modifier = Modifier.padding(start = 6.dp, end = 16.dp)
-                    )
-                    CircleDot(Color(0xFFE54D4D))
-                    Text(
-                        text = "Rojo = meta sin cumplir",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFB0B0B0),
-                        modifier = Modifier.padding(start = 6.dp)
-                    )
+                    if (detalle.idHabito == 4) {
+                        // Leyenda específica para postura según la imagen
+                        Text(
+                            text = detalle.leyendaNegativa,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFB0B0B0),
+                            textAlign = TextAlign.Center
+                        )
+                    } else {
+                        CircleDot(Color(0xFF5CB38C))
+                        Text(
+                            text = detalle.leyendaPositiva,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFB0B0B0),
+                            modifier = Modifier.padding(start = 6.dp, end = 16.dp)
+                        )
+                        CircleDot(Color(0xFFE54D4D))
+                        Text(
+                            text = detalle.leyendaNegativa,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFB0B0B0),
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -252,12 +259,17 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
 
 @Composable
 fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: Int) {
-    // Determinar unidad y escala según el hábito
-    val unidad = if (idHabito == 2) "L" else "h"
+    // Determinar unidad según el hábito
+    val unidad = when(idHabito) {
+        2 -> "L"
+        3 -> "km"
+        4 -> "⚠️"
+        else -> "h"
+    }
     
-    // Calculamos el máximo para que la barra más alta llegue casi al tope (como en la imagen)
+    // Calculamos el máximo para la escala visual
     val maxData = registros.maxOfOrNull { it.valor } ?: 0f
-    val maxVisual = maxOf(meta, maxData) * 1.2f
+    val maxVisual = maxOf(if (idHabito == 4) 10f else meta, maxData) * 1.2f
     
     Row(
         modifier = Modifier
@@ -268,16 +280,20 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
     ) {
         registros.forEach { registro ->
             val isHoy = registro.etiqueta == "Hoy"
-            val barColor = if (registro.esMetaCumplida) Color(0xFF5CB38C) else Color(0xFFE54D4D)
+            // En postura todas las barras son rojas según la imagen
+            val barColor = if (idHabito == 4) Color(0xFFE54D4D) else {
+                if (registro.esMetaCumplida) Color(0xFF5CB38C) else Color(0xFFE54D4D)
+            }
             val barHeightFraction = (registro.valor / maxVisual).coerceIn(0.1f, 0.95f)
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.weight(1f)
             ) {
-                // Valor encima de la barra (ej: 2.1L o 8.2h)
+                // Valor con unidad (ej: 9⚠️ o 2.1L)
+                val valorFormateado = if (idHabito == 4) registro.valor.toInt().toString() else registro.valor.toString()
                 Text(
-                    text = "${registro.valor}$unidad",
+                    text = "$valorFormateado$unidad",
                     color = barColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
@@ -286,7 +302,6 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Área de la barra alineada al fondo
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -295,7 +310,7 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(38.dp)
+                            .width(if (idHabito == 4) 42.dp else 38.dp) // Postura tiene barras un poco más anchas
                             .fillMaxHeight(barHeightFraction)
                             .clip(RoundedCornerShape(topStart = 100.dp, topEnd = 100.dp))
                             .background(barColor)
@@ -304,7 +319,6 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Etiqueta del día
                 Text(
                     text = registro.etiqueta,
                     color = if (isHoy) Color(0xFF1E392A) else Color(0xFFB0B0B0),
@@ -358,7 +372,6 @@ fun TendenciaGeneralCard(porcentaje: String, tendencia: List<ProgresoDia>) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Gráfica de barras que muestra el cumplimiento de TODOS los hábitos
             BarChart(tendencia)
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -375,10 +388,8 @@ fun TendenciaGeneralCard(porcentaje: String, tendencia: List<ProgresoDia>) {
 
 @Composable
 fun BarChart(data: List<ProgresoDia>) {
-    // Representa si se cumplieron TODOS los hábitos en los últimos 21 días
     val displayData = if (data.isEmpty()) {
         List(21) { i -> 
-            // Generamos valores que representen el cumplimiento total (barras más altas = más hábitos cumplidos)
             ProgresoDia(i + 1, (0.3f + (Math.random() * 0.7f)).toFloat())
         }
     } else data
@@ -404,7 +415,6 @@ fun BarChart(data: List<ProgresoDia>) {
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Eje X
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
