@@ -45,7 +45,7 @@ object ModuloRed {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.14.0.211:8080/")
+            .baseUrl("http://10.14.0.39:8080/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

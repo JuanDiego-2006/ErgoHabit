@@ -5,25 +5,26 @@ import com.knexus.ergohabit.features.posture.domain.repository.PostureRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
+import kotlin.math.abs
 
-/**
- * Caso de uso para analizar la postura. Aquí reside la lógica de negocio.
- */
 class PosturaUseCase @Inject constructor(
     private val repositorio: PostureRepository
 ) {
-    /**
-     * Ejecuta el análisis de postura validando los ángulos.
-     */
     operator fun invoke(): Flow<EntidadPostura> {
         return repositorio.getPostureData().map { entidad ->
-            // Lógica de negocio en español: Validar ángulos entre -15 y 15 grados
-            val esCorrecta = entidad.anguloPitch in -15.0..15.0 && entidad.anguloRoll in -15.0..15.0
-            val mensajeAlerta = if (esCorrecta) "Postura Correcta" else "¡Corrige tu postura!"
-            
+            val gradosMalaPostura = abs(90.0 - abs(entidad.anguloPitch))
+
+            // Límite ajustado a 25.0 grados
+            val esCorrecta = gradosMalaPostura <= 25.0
+            val mensajeAlerta = when {
+                gradosMalaPostura <= 25.0 -> "Postura Correcta"
+                gradosMalaPostura <= 40.0 -> "¡Eleva tu teléfono!"
+                else                      -> "¡Corrige tu postura!"
+            }
+
             entidad.copy(
                 esCorrecta = esCorrecta,
-                mensaje = mensajeAlerta
+                mensaje    = mensajeAlerta
             )
         }
     }

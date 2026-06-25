@@ -67,7 +67,7 @@ fun PostureScreen(
 
             TarjetaSensor(
                 isSensorActive = estado.estaMonitoreando,
-                gradosInclinacion = estado.anguloPitch.toInt(),
+                gradosInclinacion = estado.gradosDisplay,
                 onToggleClick = {
                     viewModel.alternarMonitoreo()
                     val intent = Intent(context, PostureForegroundService::class.java)
