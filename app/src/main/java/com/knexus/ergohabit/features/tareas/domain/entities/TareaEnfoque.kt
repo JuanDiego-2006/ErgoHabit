@@ -6,7 +6,8 @@ data class TareaEnfoque(
     val categoria: String,
     val duracionText: String,
     val idEstado: Int,
-    val duracionMinutos: Int = 0 // Usado para el temporizador
+    val duracionMinutos: Int = 0,
+    val fechaInicioCronometro: String? = null
 )
 
 data class TareasEstado(

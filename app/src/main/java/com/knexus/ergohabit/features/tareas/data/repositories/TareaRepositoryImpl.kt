@@ -23,11 +23,29 @@ class TareaRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createTarea(titulo: String, categoria: String, duracionMinutos: Int): Result<TareaEnfoque> {
+    override suspend fun createTarea(titulo: String, categoria: String, duracionMinutos: Int): Result<String> {
         return try {
             val request = TareaCreateRequestDto(titulo, categoria, duracionMinutos)
             val response = api.createTarea(request)
-            Result.success(response.toDomain())
+            Result.success(response.mensaje ?: "Tarea creada")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun iniciarTarea(idTarea: Int): Result<String> {
+        return try {
+            val response = api.iniciarTarea(idTarea)
+            Result.success(response.mensaje ?: "Cronómetro iniciado")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pausarTarea(idTarea: Int): Result<String> {
+        return try {
+            val response = api.pausarTarea(idTarea)
+            Result.success(response.mensaje ?: "Cronómetro pausado")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -37,6 +55,30 @@ class TareaRepositoryImpl @Inject constructor(
         return try {
             val response = api.completarTarea(idTarea)
             Result.success(response.toDomain())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun eliminarTarea(idTarea: Int): Result<String> {
+        return try {
+            val response = api.eliminarTarea(idTarea)
+            Result.success(response.mensaje ?: "Tarea eliminada")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getInfoCronometro(idTarea: Int): Result<com.knexus.ergohabit.features.tareas.domain.entities.AlertaSalud> {
+        return try {
+            val response = api.getInfoCronometro(idTarea)
+            Result.success(
+                com.knexus.ergohabit.features.tareas.domain.entities.AlertaSalud(
+                    frase = response.fraseMotivacional,
+                    accion = response.accionFisica,
+                    requierePostura = response.requiereAlertasPostura
+                )
+            )
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -48,9 +48,11 @@ fun CronometroSeccion(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = when(tarea.categoria) {
-                            "Académica" -> "🎓"
-                            "Bienestar", "Salud" -> "🧘"
-                            "Enfoque", "Trabajo" -> "🧠"
+                            "Académica" -> "📚"
+                            "Laboral" -> "💼"
+                            "Bienestar" -> "🧘"
+                            "Enfoque Profundo" -> "🧠"
+                            "Personal" -> "👤"
                             else -> "📌"
                         },
                         fontSize = 14.sp
@@ -80,12 +82,11 @@ fun CronometroSeccion(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Círculo de progreso (las "rueditas")
+            // Círculo de progreso
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(200.dp)
             ) {
-                // Círculo de fondo
                 Canvas(modifier = Modifier.size(180.dp)) {
                     drawArc(
                         color = BgMain,
@@ -96,7 +97,6 @@ fun CronometroSeccion(
                     )
                 }
                 
-                // Círculo de progreso
                 Canvas(modifier = Modifier.size(180.dp)) {
                     drawArc(
                         color = MoradoAcento,

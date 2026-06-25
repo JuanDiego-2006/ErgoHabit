@@ -2,30 +2,31 @@ package com.knexus.ergohabit.features.tareas.data.models
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * DTO para recibir la lista agrupada de tareas desde la API.
- */
+
 data class TareasResponseDto(
-    @SerializedName("totalPendientesText") val totalPendientesText: String,
-    @SerializedName("totalCompletadasText") val totalCompletadasText: String,
-    @SerializedName("pendientes") val pendientes: List<TareaDto>,
-    @SerializedName("completadas") val completadas: List<TareaDto>
+    @SerializedName("totalPendientesText") val totalPendientesText: String? = null,
+    @SerializedName("totalCompletadasText") val totalCompletadasText: String? = null,
+    @SerializedName("pendientes") val pendientes: List<TareaDto>? = null,
+    @SerializedName("completadas") val completadas: List<TareaDto>? = null
 )
 
-/**
- * DTO que representa una tarea individual en la respuesta de la API.
- */
+
 data class TareaDto(
-    @SerializedName("idTarea") val idTarea: Int,
-    @SerializedName("titulo") val titulo: String,
-    @SerializedName("categoria") val categoria: String,
-    @SerializedName("duracionText") val duracionText: String,
-    @SerializedName("idEstado") val idEstado: Int
+    @SerializedName("idTarea") val idTarea: Int? = null,
+    @SerializedName("titulo") val titulo: String? = null,
+    @SerializedName("categoria") val categoria: String? = null,
+    @SerializedName("duracionText") val duracionText: String? = null,
+    @SerializedName("idEstado") val idEstado: Int? = null,
+    @SerializedName("fechaInicioCronometro") val fechaInicioCronometro: String? = null
 )
 
-/**
- * DTO para enviar la solicitud de creación de una nueva tarea.
- */
+data class MessageResponseDto(
+    @SerializedName("mensaje") val mensaje: String? = null,
+    @SerializedName("message") val errorMensaje: String? = null,
+    @SerializedName("code") val codigo: String? = null
+)
+
+
 data class TareaCreateRequestDto(
     @SerializedName("titulo") val titulo: String,
     @SerializedName("categoria") val categoria: String,

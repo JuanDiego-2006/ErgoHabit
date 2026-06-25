@@ -33,6 +33,27 @@ class SessionManager @Inject constructor(context: Context) {
     /**
      * Elimina los datos de la sesión.
      */
+    /**
+     * Guarda el progreso en segundos de una tarea específica.
+     */
+    fun saveTaskProgress(idTarea: Int, segundosRestantes: Int) {
+        prefs.edit().putInt("task_progress_$idTarea", segundosRestantes).apply()
+    }
+
+    /**
+     * Recupera el progreso en segundos de una tarea.
+     */
+    fun getTaskProgress(idTarea: Int): Int {
+        return prefs.getInt("task_progress_$idTarea", -1)
+    }
+
+    /**
+     * Elimina el progreso guardado de una tarea (ej. al completarla).
+     */
+    fun clearTaskProgress(idTarea: Int) {
+        prefs.edit().remove("task_progress_$idTarea").apply()
+    }
+
     fun clearSession() {
         prefs.edit().remove(USER_TOKEN).apply()
     }

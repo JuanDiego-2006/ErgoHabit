@@ -3,9 +3,10 @@ package com.knexus.ergohabit.features.tareas.presentation.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,20 +19,23 @@ import com.knexus.ergohabit.ui.theme.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.ui.unit.sp
 
 @Composable
 fun ItemTarea(
     tarea: TareaEnfoque,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     val isCompletada = tarea.idEstado == 2
     val categoryColor = when(tarea.categoria) {
         "Académica" -> MoradoAcento
-        "Bienestar", "Salud" -> GreenPrimary
-        "Enfoque", "Trabajo" -> PurpleAccent
-        else -> OrangeAccent
+        "Laboral" -> OrangeAccent
+        "Bienestar" -> GreenPrimary
+        "Enfoque Profundo" -> PurpleAccent
+        else -> TextGray.copy(alpha = 0.5f)
     }
 
     Surface(
@@ -47,7 +51,6 @@ fun ItemTarea(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Indicador de color lateral (solo si no está completada o opcional según diseño)
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -68,9 +71,11 @@ fun ItemTarea(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = when(tarea.categoria) {
-                            "Académica" -> "🎓"
-                            "Bienestar", "Salud" -> "🧘"
-                            "Enfoque", "Trabajo" -> "🧠"
+                            "Académica" -> "📚"
+                            "Laboral" -> "💼"
+                            "Bienestar" -> "🧘"
+                            "Enfoque Profundo" -> "🧠"
+                            "Personal" -> "👤"
                             else -> "📌"
                         },
                         fontSize = 12.sp
@@ -92,12 +97,22 @@ fun ItemTarea(
                     modifier = Modifier.size(24.dp)
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = TextGray.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
-                )
+                // --- BOTÓN ELIMINAR (Como en la imagen) ---
+                IconButton(
+                    onClick = { onDeleteClick() },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFFEBEE)) // Color rojizo muy suave de fondo
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Eliminar tarea",
+                        tint = Color(0xFFE54D4D), // Rojo suave para el icono
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                // ------------------------------------------
             }
         }
     }

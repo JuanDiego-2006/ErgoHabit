@@ -6,23 +6,24 @@ import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
 import com.knexus.ergohabit.features.tareas.domain.entities.TareasEstado
 
 fun TareaDto.toDomain(): TareaEnfoque {
-    // Extraer minutos del texto "30 min"
-    val minutos = this.duracionText.replace(" min", "").toIntOrNull() ?: 0
+    val dText = this.duracionText ?: "0 min"
+    val minutos = dText.replace(" min", "").toIntOrNull() ?: 0
     return TareaEnfoque(
-        id = this.idTarea,
-        titulo = this.titulo,
-        categoria = this.categoria,
-        duracionText = this.duracionText,
-        idEstado = this.idEstado,
-        duracionMinutos = minutos
+        id = this.idTarea ?: 0,
+        titulo = this.titulo ?: "Sin título",
+        categoria = this.categoria ?: "General",
+        duracionText = dText,
+        idEstado = this.idEstado ?: 1,
+        duracionMinutos = minutos,
+        fechaInicioCronometro = this.fechaInicioCronometro
     )
 }
 
 fun TareasResponseDto.toDomain(): TareasEstado {
     return TareasEstado(
-        pendientes = this.pendientes.map { it.toDomain() },
-        completadas = this.completadas.map { it.toDomain() },
-        totalPendientesText = this.totalPendientesText,
-        totalCompletadasText = this.totalCompletadasText
+        pendientes = this.pendientes?.map { it.toDomain() } ?: emptyList(),
+        completadas = this.completadas?.map { it.toDomain() } ?: emptyList(),
+        totalPendientesText = this.totalPendientesText ?: "PENDIENTES · 0",
+        totalCompletadasText = this.totalCompletadasText ?: "COMPLETADAS · 0"
     )
 }

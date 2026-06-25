@@ -1,23 +1,32 @@
 package com.knexus.ergohabit.features.tareas.data.datasource.api
 
+import com.knexus.ergohabit.features.tareas.data.models.MessageResponseDto
 import com.knexus.ergohabit.features.tareas.data.models.TareaCreateRequestDto
 import com.knexus.ergohabit.features.tareas.data.models.TareaDto
 import com.knexus.ergohabit.features.tareas.data.models.TareasResponseDto
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.PATCH
-import retrofit2.http.POST
-import retrofit2.http.Path
+import retrofit2.http.*
 
 interface TareaApi {
     @GET("api/v1/tareas")
     suspend fun getTareas(): TareasResponseDto
 
     @POST("api/v1/tareas")
-    suspend fun createTarea(@Body tarea: TareaCreateRequestDto): TareaDto
+    suspend fun createTarea(@Body tarea: TareaCreateRequestDto): MessageResponseDto
+
+    @PATCH("api/v1/tareas/{idTarea}/iniciar")
+    suspend fun iniciarTarea(@Path("idTarea") idTarea: Int): MessageResponseDto
+
+    @PATCH("api/v1/tareas/{idTarea}/pausar")
+    suspend fun pausarTarea(@Path("idTarea") idTarea: Int): MessageResponseDto
 
     @PATCH("api/v1/tareas/{idTarea}/completar")
     suspend fun completarTarea(@Path("idTarea") idTarea: Int): TareaDto
+
+    @DELETE("api/v1/tareas/{idTarea}")
+    suspend fun eliminarTarea(@Path("idTarea") idTarea: Int): MessageResponseDto
+
+    @GET("api/v1/tareas/{idTarea}/cronometro")
+    suspend fun getInfoCronometro(@Path("idTarea") idTarea: Int): com.knexus.ergohabit.features.tareas.data.models.CronometroAlertaDto
 
     @GET("api/v1/tareas/mensaje-exito")
     suspend fun getMensajeExito(): Map<String, String>
