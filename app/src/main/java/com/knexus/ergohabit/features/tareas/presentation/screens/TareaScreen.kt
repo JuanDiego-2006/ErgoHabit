@@ -36,15 +36,22 @@ fun TareaScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // --- MANEJO DE INTENT DE NOTIFICACIÓN ---
-    LaunchedEffect(Unit) {
-        val intent = (context as? android.app.Activity)?.intent
-        val frase = intent?.getStringExtra("frase")
-        val accion = intent?.getStringExtra("accion")
-        if (frase != null && accion != null) {
-            viewModel.mostrarAlertaDesdeNotificacion(frase, accion)
-            intent.removeExtra("frase")
-            intent.removeExtra("accion")
+    // --- MANEJO DE INTENT DE NOTIFICACIÓN (CORREGIDO PARA RE-ENTRADA) ---
+    val activity = context as? android.app.Activity
+    LaunchedEffect(activity?.intent) {
+        activity?.intent?.let { intent ->
+            val frase = intent.getStringExtra("frase")
+            val accion = intent.getStringExtra("accion")
+            val tareaCompletadaId = intent.getIntExtra("tareaCompletadaId", -1)
+
+            if (frase != null && accion != null) {
+                viewModel.mostrarAlertaDesdeNotificacion(frase, accion)
+                intent.removeExtra("frase")
+                intent.removeExtra("accion")
+            } else if (tareaCompletadaId != -1) {
+                viewModel.prepararPantallaCompletado(tareaCompletadaId)
+                intent.removeExtra("tareaCompletadaId")
+            }
         }
     }
 
@@ -203,7 +210,13 @@ fun TareaScreen(
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            CronometroSeccion(tarea = uiState.tareaSeleccionada, tiempoRestante = uiState.tiempoRestante, isRunning = uiState.isTimerRunning, onToggleTimer = { viewModel.toggleTimer() })
+            CronometroSeccion(
+                tarea = uiState.tareaSeleccionada,
+                tiempoRestante = uiState.tiempoRestante,
+                duracionSesionActual = uiState.duracionSesionActual,
+                isRunning = uiState.isTimerRunning,
+                onToggleTimer = { viewModel.toggleTimer() }
+            )
         }
     }
 }

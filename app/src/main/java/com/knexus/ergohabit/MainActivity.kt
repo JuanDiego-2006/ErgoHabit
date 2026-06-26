@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.*
 import androidx.navigation.compose.rememberNavController
 import com.knexus.ergohabit.core.navigation.GrafoNavegacion
 import com.knexus.ergohabit.core.session.SessionManager
@@ -22,9 +23,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionManager: SessionManager
 
+    private var currentIntent by mutableStateOf<Intent?>(null)
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        currentIntent = intent
     }
 
     private val lanzadorPermisos = registerForActivityResult(
@@ -38,6 +42,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        currentIntent = intent
 
         val permisosASolicitar = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -53,6 +58,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             ErgoHabitTheme {
                 val navController = rememberNavController()
+
+                // --- MANEJO GLOBAL DE REDIRECCIÓN POR NOTIFICACIONES ---
+                LaunchedEffect(currentIntent) {
+                    val intent = currentIntent
+                    if (intent != null && (intent.hasExtra("frase") || intent.hasExtra("tareaCompletadaId"))) {
+                        // Si el usuario está logueado, lo mandamos a Tareas
+                        if (sessionManager.fetchAuthToken() != null) {
+                            navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Tareas()) {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                }
+                // -------------------------------------------------------
+
                 GrafoNavegacion(
                     navController = navController,
                     sessionManager = sessionManager

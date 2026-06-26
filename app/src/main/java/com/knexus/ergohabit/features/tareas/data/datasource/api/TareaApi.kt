@@ -20,14 +20,17 @@ interface TareaApi {
     suspend fun pausarTarea(@Path("idTarea") idTarea: Int): MessageResponseDto
 
     @PATCH("api/v1/tareas/{idTarea}/completar")
-    suspend fun completarTarea(@Path("idTarea") idTarea: Int): TareaDto
+    suspend fun completarTarea(@Path("idTarea") idTarea: Int): MessageResponseDto
+
+    @PATCH("api/v1/tareas/{idTarea}/extender")
+    suspend fun extenderTarea(
+        @Path("idTarea") idTarea: Int,
+        @Body request: com.knexus.ergohabit.features.tareas.data.models.TareaExtenderRequestDto
+    ): MessageResponseDto
 
     @DELETE("api/v1/tareas/{idTarea}")
     suspend fun eliminarTarea(@Path("idTarea") idTarea: Int): MessageResponseDto
 
     @GET("api/v1/tareas/{idTarea}/cronometro")
     suspend fun getInfoCronometro(@Path("idTarea") idTarea: Int): com.knexus.ergohabit.features.tareas.data.models.CronometroAlertaDto
-
-    @GET("api/v1/tareas/mensaje-exito")
-    suspend fun getMensajeExito(): Map<String, String>
 }

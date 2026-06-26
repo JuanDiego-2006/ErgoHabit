@@ -16,9 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Receptor de alarmas para las notificaciones de salud cada 30 minutos.
- */
+
 @AndroidEntryPoint
 class AlertaSaludReceiver : BroadcastReceiver() {
 
@@ -27,9 +25,9 @@ class AlertaSaludReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val idTarea = intent.getIntExtra("idTarea", -1)
+        val esFinDeTarea = intent.getBooleanExtra("esFinDeTarea", false)
         if (idTarea == -1) return
 
-        // Canal de notificación para Android 8.0+
         val channelId = "ergo_health_alerts"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
@@ -42,10 +40,30 @@ class AlertaSaludReceiver : BroadcastReceiver() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        // Consultar API en segundo plano
+        if (esFinDeTarea) {
+            // Notificación de Tarea Completada
+            val activityIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("tareaCompletadaId", idTarea)
+            }
+            val pendingIntent = PendingIntent.getActivity(context, idTarea + 1000, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("¡Objetivo Cumplido! 🌟")
+                .setContentText("Has terminado tu sesión de enfoque. ¡Excelente trabajo!")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            notificationManager.notify(idTarea + 1000, notification)
+            return
+        }
+
+        // Consultar API para alerta de salud (30 min)
         CoroutineScope(Dispatchers.IO).launch {
             getAlertaSaludUseCase(idTarea).onSuccess { info ->
-                // Intent para abrir la App
                 val activityIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                     putExtra("mostrarAlertaId", idTarea)

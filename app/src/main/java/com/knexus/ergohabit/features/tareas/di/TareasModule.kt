@@ -1,5 +1,6 @@
 package com.knexus.ergohabit.features.tareas.di
 
+import com.knexus.ergohabit.core.database.dao.TareaProgresoDao
 import com.knexus.ergohabit.features.tareas.data.datasource.api.TareaApi
 import com.knexus.ergohabit.features.tareas.data.repositories.TareaRepositoryImpl
 import com.knexus.ergohabit.features.tareas.domain.repositories.TareaRepository
@@ -22,7 +23,7 @@ object TareasModule {
 
     @Provides
     @Singleton
-    fun provideTareaRepository(api: TareaApi): TareaRepository {
-        return TareaRepositoryImpl(api)
+    fun provideTareaRepository(api: TareaApi, dao: TareaProgresoDao): TareaRepository {
+        return TareaRepositoryImpl(api, dao)
     }
 }

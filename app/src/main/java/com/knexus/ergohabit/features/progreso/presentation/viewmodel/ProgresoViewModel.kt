@@ -3,7 +3,7 @@ package com.knexus.ergohabit.features.progreso.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knexus.ergohabit.features.progreso.domain.usecases.GetHabitosProgresoUseCase
-import com.knexus.ergohabit.features.progreso.domain.usecases.GetTendenciaGeneralUseCase
+import com.knexus.ergohabit.features.progreso.domain.usecases.GetFraseAleatoriaUseCase
 import com.knexus.ergohabit.features.progreso.domain.usecases.GetDetalleHabitoUseCase
 import com.knexus.ergohabit.features.progreso.presentation.screens.ProgresoUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProgresoViewModel @Inject constructor(
     private val getHabitosProgresoUseCase: GetHabitosProgresoUseCase,
-    private val getTendenciaGeneralUseCase: GetTendenciaGeneralUseCase,
+    private val getFraseAleatoriaUseCase: GetFraseAleatoriaUseCase,
     private val getDetalleHabitoUseCase: GetDetalleHabitoUseCase
 ) : ViewModel() {
 
@@ -45,7 +45,7 @@ class ProgresoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            // Cargar hábitos
+
             getHabitosProgresoUseCase(idUsuario).collect { result ->
                 result.onSuccess { habitos ->
                     _uiState.update { it.copy(habitos = habitos) }
@@ -54,16 +54,10 @@ class ProgresoViewModel @Inject constructor(
                 }
             }
 
-            // Cargar tendencia
-            getTendenciaGeneralUseCase(idUsuario).collect { result ->
-                result.onSuccess { (porcentaje, tendencia) ->
-                    _uiState.update { 
-                        it.copy(
-                            tendencia = tendencia, 
-                            porcentajeTendencia = porcentaje,
-                            isLoading = false 
-                        ) 
-                    }
+
+            getFraseAleatoriaUseCase().collect { result ->
+                result.onSuccess { frase ->
+                    _uiState.update { it.copy(frase = frase, isLoading = false) }
                 }.onFailure { error ->
                     _uiState.update { it.copy(error = error.message, isLoading = false) }
                 }

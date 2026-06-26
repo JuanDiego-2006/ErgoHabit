@@ -83,7 +83,7 @@ fun ProgresoScreen(
             }
 
             Text(
-                text = "CUMPLIMIENTO DE HÁBITOS · 21 DÍAS",
+                text = "FRASE DEL DÍA",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextGray,
                 letterSpacing = 1.sp
@@ -91,13 +91,56 @@ fun ProgresoScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tarjeta de Tendencia General (Cumplimiento de todos los hábitos)
-            TendenciaGeneralCard(
-                porcentaje = uiState.porcentajeTendencia,
-                tendencia = uiState.tendencia
-            )
+            // Nueva Tarjeta de Frase del Día
+            FraseDelDiaCard(uiState.frase)
             
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+fun FraseDelDiaCard(frase: com.knexus.ergohabit.features.progreso.domain.entities.Frase?) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFDFF1E1)), // Verde clarito como la imagen
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "INSPIRACIÓN DEL DÍA",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF5E9C76),
+                    fontWeight = FontWeight.Bold
+                )
+                Text(text = "\"", color = Color(0xFF5E9C76), fontSize = 24.sp)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = frase?.texto ?: "La constancia es la virtud por la que todas las otras virtudes dan fruto.",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E392A),
+                lineHeight = 28.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            HorizontalDivider(color = Color(0xFF5E9C76).copy(alpha = 0.2f))
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "ErgoHabit Team", // O podrías usar la categoría si el autor no viene
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF5E9C76),
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }
@@ -169,12 +212,9 @@ fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: (
 
 @Composable
 fun DetalleHabitoCard(detalle: DetalleHabito) {
-    // Título dinámico
-    val tituloGrafica = when(detalle.idHabito) {
-        2 -> "HIDRATACIÓN (L) · ÚLTIMOS 7 DÍAS"
-        4 -> "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
-        else -> "${detalle.titulo.uppercase()} · ÚLTIMOS 7 DÍAS"
-    }
+    // --- CORRECCIÓN: Usar el título tal cual viene de la API para no repetir "ÚLTIMOS 7 DÍAS" ---
+    val tituloGrafica = detalle.titulo.uppercase()
+    // ------------------------------------------------------------------------------------------
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -266,7 +306,7 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
         4 -> "⚠️"
         else -> "h"
     }
-    
+
     // Calculamos el máximo para la escala visual
     val maxData = registros.maxOfOrNull { it.valor } ?: 0f
     val maxVisual = maxOf(if (idHabito == 4) 10f else meta, maxData) * 1.2f
@@ -280,10 +320,19 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
     ) {
         registros.forEach { registro ->
             val isHoy = registro.etiqueta == "Hoy"
-            // En postura todas las barras son rojas según la imagen
-            val barColor = if (idHabito == 4) Color(0xFFE54D4D) else {
-                if (registro.esMetaCumplida) Color(0xFF5CB38C) else Color(0xFFE54D4D)
+            
+            // --- CORRECCIÓN DE LÓGICA DE COLOR (Trust API) ---
+            val esFuturo = !isHoy && (registros.indexOf(registro) > registros.indexOf(registros.find { it.etiqueta == "Hoy" }))
+            
+            val barColor = when {
+                idHabito == 4 -> Color(0xFFE54D4D) // Postura siempre rojo
+                esFuturo -> Color.LightGray.copy(alpha = 0.3f) // Futuro en gris
+                registro.esMetaCumplida && registro.valor > 0 -> Color(0xFF5CB38C) // Verde si API dice cumplido
+                else -> Color(0xFFE54D4D) // Rojo si API dice no cumplido
             }
+            // --------------------------------------------------
+            // --------------------------------------
+
             val barHeightFraction = (registro.valor / maxVisual).coerceIn(0.1f, 0.95f)
 
             Column(
@@ -299,7 +348,7 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                     fontSize = 12.sp,
                     maxLines = 1
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Box(
@@ -339,91 +388,4 @@ fun CircleDot(color: Color) {
             .clip(CircleShape)
             .background(color)
     )
-}
-
-@Composable
-fun TendenciaGeneralCard(porcentaje: String, tendencia: List<ProgresoDia>) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Tendencia general",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = porcentaje,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            BarChart(tendencia)
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Días del experimento (día 1 – 21)",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextGray,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-        }
-    }
-}
-
-@Composable
-fun BarChart(data: List<ProgresoDia>) {
-    val displayData = if (data.isEmpty()) {
-        List(21) { i -> 
-            ProgresoDia(i + 1, (0.3f + (Math.random() * 0.7f)).toFloat())
-        }
-    } else data
-
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            displayData.forEach { dia ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(dia.valor)
-                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                        .background(GreenPrimary)
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("1", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("6", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("11", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("16", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("21", style = MaterialTheme.typography.labelSmall, color = TextGray)
-        }
-    }
 }
