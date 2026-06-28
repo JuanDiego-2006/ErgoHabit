@@ -45,11 +45,21 @@ class TareaViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var segundosTranscurridos = 0
     private var segundosParaAlertaHealth = 0
-    private val INTERVALO_ALERTA_API = 25 * 60
-    private val INTERVALO_ESTIRAMIENTO = 25 * 60
+    private val INTERVALO_ALERTA_API = 30 * 60
+    private val INTERVALO_ESTIRAMIENTO = 30 * 60
 
     init {
         loadTareas()
+        startAutoRefresh()
+    }
+
+    private fun startAutoRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                delay(30_000) // Actualizar cada 30 segundos de forma silenciosa
+                loadTareas()
+            }
+        }
     }
 
     fun prepararPantallaCompletado(idTarea: Int) {
@@ -73,7 +83,11 @@ class TareaViewModel @Inject constructor(
 
     fun loadTareas() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            // Solo mostramos Loading si no tenemos datos previos para que el refresh sea "silencioso" y rápido
+            if (_uiState.value.tareasEstado == null) {
+                _uiState.update { it.copy(isLoading = true) }
+            }
+            
             getTareasUseCase().collect { result ->
                 result.onSuccess { estado ->
                     _uiState.update { it.copy(tareasEstado = estado, isLoading = false) }
@@ -83,12 +97,13 @@ class TareaViewModel @Inject constructor(
                         (estado.pendientes + estado.completadas).find { it.id == actual.id }?.let { actualizada ->
                             _uiState.update { it.copy(tareaSeleccionada = actualizada) }
                             
-                            // Sincronización al recargar
+                            // MANTENER ESTADO 3: Si el servidor dice que es 3, el reloj debe correr
                             if (actualizada.idEstado == 3 && !_uiState.value.isTimerRunning) {
                                 recuperarYIniciarSincronizado(actualizada)
                             }
                         }
                     } else {
+                        // Buscar cualquier tarea que venga con estado 3 del servidor
                         estado.pendientes.find { it.idEstado == 3 }?.let { tareaActiva ->
                             recuperarYIniciarSincronizado(tareaActiva)
                         }
@@ -104,14 +119,11 @@ class TareaViewModel @Inject constructor(
         viewModelScope.launch {
             val progreso = getLocalProgressUseCase(tarea.id)
             val ahora = System.currentTimeMillis()
-            
             val segundosAPI = tarea.duracionMinutos * 60
             
-            // Lógica Maestra: Si hay un targetEndTimeMs guardado y es futuro, calculamos el tiempo real pasado
+            // Prioridad a Room si targetEndTimeMs es válido
             val segundos = if (progreso != null && progreso.targetEndTimeMs > ahora) {
                 ((progreso.targetEndTimeMs - ahora) / 1000).toInt()
-            } else if (progreso != null && Math.abs(progreso.segundosRestantes - segundosAPI) < 65) {
-                progreso.segundosRestantes
             } else {
                 segundosAPI
             }
@@ -134,24 +146,17 @@ class TareaViewModel @Inject constructor(
     fun seleccionarTarea(tarea: TareaEnfoque) {
         if (_uiState.value.tareaSeleccionada?.id == tarea.id) return
         viewModelScope.launch {
-            // Guardar progreso de la tarea que dejamos
             _uiState.value.tareaSeleccionada?.let { anterior ->
-                saveLocalProgressUseCase(
-                    anterior.id, 
-                    _uiState.value.tiempoRestante, 
-                    _uiState.value.duracionSesionActual, 
-                    if (_uiState.value.isTimerRunning) _uiState.value.targetEndTimeMs else -1L
-                )
+                saveLocalProgressUseCase(anterior.id, _uiState.value.tiempoRestante, _uiState.value.duracionSesionActual, if (_uiState.value.isTimerRunning) _uiState.value.targetEndTimeMs else -1L)
             }
 
             timerJob?.cancel()
             segundosTranscurridos = 0
-            
             val progreso = getLocalProgressUseCase(tarea.id)
             val ahora = System.currentTimeMillis()
             val segundosAPI = tarea.duracionMinutos * 60
 
-            val segundos = if (tarea.idEstado == 3 && progreso != null && progreso.targetEndTimeMs > ahora) {
+            val segundos = if (tarea.fechaInicioCronometro != null && progreso != null && progreso.targetEndTimeMs > ahora) {
                 ((progreso.targetEndTimeMs - ahora) / 1000).toInt()
             } else if (progreso != null && Math.abs(progreso.segundosRestantes - segundosAPI) < 65) {
                 progreso.segundosRestantes
@@ -167,7 +172,7 @@ class TareaViewModel @Inject constructor(
                     tiempoRestante = segundos, 
                     duracionSesionActual = inicial, 
                     targetEndTimeMs = progreso?.targetEndTimeMs ?: -1L,
-                    isTimerRunning = (tarea.idEstado == 3 && segundos > 0)
+                    isTimerRunning = (tarea.fechaInicioCronometro != null && segundos > 0)
                 ) 
             }
             if (_uiState.value.isTimerRunning) startTimerVisual()
@@ -192,15 +197,11 @@ class TareaViewModel @Inject constructor(
                 iniciarTareaUseCase(tarea.id).onSuccess { mensaje ->
                     val duration = _uiState.value.tiempoRestante
                     val targetEnd = System.currentTimeMillis() + (duration.toLong() * 1000)
-                    
                     val inicial = if (_uiState.value.duracionSesionActual > 0) _uiState.value.duracionSesionActual else duration
-                    
                     _uiState.update { it.copy(successMessage = mensaje, duracionSesionActual = inicial, targetEndTimeMs = targetEnd) }
                     saveLocalProgressUseCase(tarea.id, duration, inicial, targetEnd)
-                    
-                    programarAlarmaSistema(tarea.id, (25 * 60).toLong(), "ALERTA_SALUD")
+                    programarAlarmaSistema(tarea.id, (30 * 60).toLong(), "ALERTA_SALUD")
                     programarAlarmaSistema(tarea.id, duration.toLong(), "FIN_TAREA")
-                    
                     startTimerVisual()
                     loadTareas()
                 }.onFailure { error -> _uiState.update { it.copy(error = error.message) } }
@@ -226,7 +227,15 @@ class TareaViewModel @Inject constructor(
                 if (segundosParaAlertaHealth >= INTERVALO_ALERTA_API) {
                     _uiState.value.tareaSeleccionada?.let { t -> 
                         getAlertaSaludUseCase(t.id).onSuccess { info -> 
-                            _uiState.update { it.copy(mostrarAlertaSalud = true, alertaSaludInfo = info) } 
+                            // --- CAMBIO: Pausa automática al disparar la alerta ---
+                            timerJob?.cancel()
+                            _uiState.update { it.copy(
+                                isTimerRunning = false,
+                                mostrarAlertaSalud = true, 
+                                alertaSaludInfo = info
+                            ) }
+                            // Avisamos al servidor que pausamos por salud
+                            pausarTareaUseCase(t.id)
                         } 
                     }
                     segundosParaAlertaHealth = 0
@@ -234,7 +243,6 @@ class TareaViewModel @Inject constructor(
 
                 val ahora = System.currentTimeMillis()
                 val targetEnd = _uiState.value.targetEndTimeMs
-                
                 if (targetEnd > 0) {
                     val nuevoRestante = ((targetEnd - ahora) / 1000).toInt()
                     _uiState.update { it.copy(tiempoRestante = if (nuevoRestante > 0) nuevoRestante else 0) }
@@ -258,39 +266,17 @@ class TareaViewModel @Inject constructor(
         }
     }
 
-    fun eliminarTarea(id: Int) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            eliminarTareaUseCase(id).onSuccess { mensaje ->
-                cancelarTodasLasAlarmas(id)
-                clearLocalProgressUseCase(id)
-                _uiState.update { it.copy(successMessage = mensaje, isLoading = false) }
-                if (_uiState.value.tareaSeleccionada?.id == id) {
-                    timerJob?.cancel()
-                    _uiState.update { it.copy(tareaSeleccionada = null, tiempoRestante = 0, isTimerRunning = false, duracionSesionActual = 0) }
-                }
-                loadTareas()
-            }.onFailure { error -> _uiState.update { it.copy(error = error.message, isLoading = false) } }
-        }
-    }
-
     fun completarTarea() {
         val t = _uiState.value.tareaSeleccionada ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, mostrarSheetCompletado = false) }
-            
-            val flowIniciar = if (t.idEstado != 3) iniciarTareaUseCase(t.id) else Result.success("Ya activa")
-            
-            flowIniciar.onSuccess {
-                completarTareaUseCase(t.id).onSuccess { mensaje ->
-                    cancelarTodasLasAlarmas(t.id)
-                    clearLocalProgressUseCase(t.id)
-                    _uiState.update { it.copy(isLoading = false, mostrarMensajeExito = true, mensajeExito = mensaje, tareaSeleccionada = null, duracionSesionActual = 0, tiempoRestante = 0) }
-                    loadTareas()
-                }.onFailure { error -> _uiState.update { it.copy(error = error.message, isLoading = false) } }
-            }.onFailure { error ->
-                _uiState.update { it.copy(error = "No se pudo reactivar para completar: ${error.message}", isLoading = false) }
-            }
+            // --- LIMPIEZA: Ahora llamamos directo a completar sin trucos de estados ---
+            completarTareaUseCase(t.id).onSuccess { mensaje ->
+                cancelarTodasLasAlarmas(t.id)
+                clearLocalProgressUseCase(t.id)
+                _uiState.update { it.copy(isLoading = false, mostrarMensajeExito = true, mensajeExito = mensaje, tareaSeleccionada = null, duracionSesionActual = 0, tiempoRestante = 0) }
+                loadTareas()
+            }.onFailure { error -> _uiState.update { it.copy(error = error.message, isLoading = false) } }
         }
     }
 
@@ -298,25 +284,13 @@ class TareaViewModel @Inject constructor(
         val t = _uiState.value.tareaSeleccionada ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, mostrarSheetMasTiempo = false) }
-            
-            val flowIniciar = if (t.idEstado != 3) iniciarTareaUseCase(t.id) else Result.success("Ya activa")
-            
-            flowIniciar.onSuccess {
-                extenderTareaUseCase(t.id, minutos).onSuccess { mensaje ->
-                    val segundosExtras = minutos * 60
-                    _uiState.update { it.copy(
-                        successMessage = mensaje,
-                        isLoading = false,
-                        tiempoRestante = segundosExtras,
-                        duracionSesionActual = segundosExtras,
-                        isTimerRunning = false 
-                    ) }
-                    saveLocalProgressUseCase(t.id, segundosExtras, segundosExtras, -1L)
-                    loadTareas()
-                }.onFailure { error -> _uiState.update { it.copy(error = error.message, isLoading = false) } }
-            }.onFailure { error ->
-                _uiState.update { it.copy(error = "No se pudo reactivar para extender: ${error.message}", isLoading = false) }
-            }
+            // --- LIMPIEZA: Ahora llamamos directo a extender sin trucos de estados ---
+            extenderTareaUseCase(t.id, minutos).onSuccess { mensaje ->
+                val segundosExtras = minutos * 60
+                _uiState.update { it.copy(successMessage = mensaje, isLoading = false, tiempoRestante = segundosExtras, duracionSesionActual = segundosExtras, isTimerRunning = false) }
+                saveLocalProgressUseCase(t.id, segundosExtras, segundosExtras, -1L)
+                loadTareas()
+            }.onFailure { error -> _uiState.update { it.copy(error = error.message, isLoading = false) } }
         }
     }
 
@@ -342,10 +316,40 @@ class TareaViewModel @Inject constructor(
         }
     }
 
-    fun mostrarAlertaDesdeNotificacion(frase: String, accion: String) { _uiState.update { it.copy(mostrarAlertaSalud = true, alertaSaludInfo = com.knexus.ergohabit.features.tareas.domain.entities.AlertaSalud(frase, accion, true)) } }
+    fun eliminarTarea(id: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            eliminarTareaUseCase(id).onSuccess { mensaje ->
+                cancelarTodasLasAlarmas(id)
+                clearLocalProgressUseCase(id)
+                _uiState.update { it.copy(successMessage = mensaje, isLoading = false) }
+                if (_uiState.value.tareaSeleccionada?.id == id) {
+                    timerJob?.cancel()
+                    _uiState.update { it.copy(tareaSeleccionada = null, tiempoRestante = 0, isTimerRunning = false, duracionSesionActual = 0) }
+                }
+                loadTareas()
+            }.onFailure { error -> _uiState.update { it.copy(error = error.message, isLoading = false) } }
+        }
+    }
+
+    fun mostrarAlertaDesdeNotificacion(frase: String, accion: String) {
+        // Pausamos el cronómetro localmente si está corriendo
+        if (_uiState.value.isTimerRunning) {
+            timerJob?.cancel()
+            _uiState.update { it.copy(isTimerRunning = false) }
+        }
+        _uiState.update { it.copy(mostrarAlertaSalud = true, alertaSaludInfo = com.knexus.ergohabit.features.tareas.domain.entities.AlertaSalud(frase, accion, true)) }
+    }
+
     fun clearMessages() { _uiState.update { it.copy(error = null, successMessage = null) } }
     fun descartarRecordatorio() { _uiState.update { it.copy(mostrarRecordatorioEstiramiento = false) }; segundosTranscurridos = 0 }
-    fun descartarAlertaSalud() { _uiState.update { it.copy(mostrarAlertaSalud = false) }; segundosParaAlertaHealth = 0 }
+
+    fun descartarAlertaSalud() {
+        _uiState.update { it.copy(mostrarAlertaSalud = false) }
+        segundosParaAlertaHealth = 0
+        // REANUDACIÓN AUTOMÁTICA: Al darle "¡Listo!", reanudamos la tarea en el servidor y el timer local
+        toggleTimer()
+    }
     fun mostrarSheetNuevaTarea(m: Boolean) { _uiState.update { it.copy(mostrarSheetNuevaTarea = m) } }
     fun onTituloCambiado(t: String) { _uiState.update { it.copy(nuevoTitulo = t) } }
     fun onCategoriaSeleccionada(n: String) { _uiState.update { it.copy(nuevaCategoriaNombre = n) } }

@@ -46,6 +46,11 @@ fun PostureScreen(
     val context = LocalContext.current
     val estado by viewModel.estadoUi.collectAsState()
 
+    // --- RECARGAR DATOS AL VOLVER A LA PANTALLA ---
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.cargarDatosInicio()
+    }
+
     Scaffold(
         containerColor = BgMain,
         bottomBar = { BarraNavegacionInferior(navController) }
@@ -58,7 +63,7 @@ fun PostureScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Buenos días, Carlos 👋",
+                text = "Buenos días, ${estado.nombreUsuario} 👋",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black,
                 color = TextPrimary,
@@ -88,7 +93,7 @@ fun PostureScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "MICRO-HÁBITOS · 1 DE 4 COMPLETADOS",
+                text = "MICRO-HÁBITOS",
                 fontSize = 11.sp,
                 color = TextSecondary,
                 letterSpacing = 0.06.sp,
@@ -99,11 +104,11 @@ fun PostureScreen(
             HabitCard(
                 emoji = "💧",
                 name = "Agua",
-                meta = "Meta: 8 vasos",
-                pct = 75,
+                meta = estado.aguaMetaTexto,
+                pct = estado.aguaPorcentaje,
                 pctColor = GreenPrimary,
                 progressColor = GreenProgress,
-                completed = false,
+                completed = estado.aguaPorcentaje >= 100,
                 onClick = { onNavigateToHidratacion() }
             )
             HabitCard(

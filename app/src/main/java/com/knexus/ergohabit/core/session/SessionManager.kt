@@ -7,9 +7,7 @@ import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Gestor de sesión para almacenar el token de autenticación de forma persistente.
- */
+
 @Singleton
 class SessionManager @Inject constructor(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("ergo_session", Context.MODE_PRIVATE)

@@ -15,11 +15,40 @@ import javax.inject.Inject
 @HiltViewModel
 class PosturaViewModel @Inject constructor(
     private val casoUsoPostura: PosturaUseCase,
-    private val gestorSonido: GestorSonido
+    private val gestorSonido: GestorSonido,
+    private val getDashboardAguaUseCase: com.knexus.ergohabit.features.posture.domain.usecase.GetDashboardAguaUseCase,
+    private val getPerfilUseCase: com.knexus.ergohabit.features.perfil.domain.usecases.GetPerfilUseCase,
+    private val sessionManager: com.knexus.ergohabit.core.session.SessionManager
 ) : ViewModel() {
 
     private val _estadoUi = MutableStateFlow(PosturaUiState())
     val estadoUi: StateFlow<PosturaUiState> = _estadoUi.asStateFlow()
+
+    init {
+        cargarDatosInicio()
+    }
+
+    fun cargarDatosInicio() {
+        val idUsuario = sessionManager.fetchUserId()
+        viewModelScope.launch {
+            // Cargar Agua
+            getDashboardAguaUseCase().onSuccess { dashboard ->
+                _estadoUi.update { it.copy(
+                    aguaPorcentaje = dashboard.porcentajeProgreso.coerceAtMost(100),
+                    aguaMetaTexto = "Meta: ${dashboard.metaDiariaMl}ml"
+                ) }
+            }
+            
+            // Cargar Nombre de Usuario real
+            if (idUsuario != -1) {
+                getPerfilUseCase(idUsuario).collect { result ->
+                    result.onSuccess { perfil ->
+                        _estadoUi.update { it.copy(nombreUsuario = perfil.nombre) }
+                    }
+                }
+            }
+        }
+    }
 
     private var vibrandoAnteriormente = false
 

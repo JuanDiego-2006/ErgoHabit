@@ -90,6 +90,19 @@ class PerfilRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun eliminarPerfil(idUsuario: Int): Result<String> {
+        return try {
+            val response = api.eliminarPerfil(idUsuario)
+            Result.success(response.mensaje ?: "Cuenta eliminada")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun clearLocalProfile() {
+        dao.clearPerfil()
+    }
+
     private fun uriToFile(uri: Uri, context: Context): File? {
         return try {
             val inputStream = context.contentResolver.openInputStream(uri)

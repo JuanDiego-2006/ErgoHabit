@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,6 +66,38 @@ fun PerfilScreen(
         bottomBar = { BarraNavegacionInferior(navController) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
+        var showDeleteDialog by remember { mutableStateOf(false) }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("¿Eliminar cuenta?", fontWeight = FontWeight.Bold) },
+                text = { Text("Esta acción no se puede deshacer. Perderás todos tus hábitos y progreso.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            viewModel.eliminarCuenta {
+                                navController.navigate(NavRuta.Login) { 
+                                    popUpTo(0) { inclusive = true } 
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFE54D4D))
+                    ) {
+                        Text("Eliminar definitivamente", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancelar", color = Color.Gray)
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = Color.White
+            )
+        }
+
         if (uiState.isLoading && uiState.usuario == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = GreenPrimary)
@@ -158,9 +191,10 @@ fun PerfilScreen(
                         ) {
                             Text(
                                 text = "Información Personal",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = TextPrimary,
+                                modifier = Modifier.weight(1f)
                             )
                             
                             // Botón Editar estilo burbuja azul
@@ -170,7 +204,7 @@ fun PerfilScreen(
                                 modifier = Modifier.clickable { viewModel.toggleEdit(!uiState.isEditing) }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
@@ -184,7 +218,8 @@ fun PerfilScreen(
                                         text = if (uiState.isEditing) "Cancelar" else "Editar",
                                         color = Color(0xFF67B7BD),
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
+                                        fontSize = 14.sp,
+                                        maxLines = 1
                                     )
                                 }
                             }
@@ -249,6 +284,27 @@ fun PerfilScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Botón Eliminar Cuenta (Texto rojo discreto)
+                TextButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Color.Gray.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Eliminar mi cuenta",
+                        color = Color.Gray.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -298,8 +354,9 @@ fun EditField(icon: ImageVector, label: String, value: String, onValueChange: (S
         TextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color(0xFFF5F5F5),
                 unfocusedContainerColor = Color(0xFFF5F5F5),

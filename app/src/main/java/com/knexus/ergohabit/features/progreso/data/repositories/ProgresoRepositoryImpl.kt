@@ -1,7 +1,9 @@
 package com.knexus.ergohabit.features.progreso.data.repositories
 
+import com.knexus.ergohabit.core.database.dao.ProgresoDao
 import com.knexus.ergohabit.features.progreso.data.datasource.api.ProgresoApi
 import com.knexus.ergohabit.features.progreso.data.mapper.toDomain
+import com.knexus.ergohabit.features.progreso.data.mapper.toEntity
 import com.knexus.ergohabit.features.progreso.data.models.DatoGraficaDto
 import com.knexus.ergohabit.features.progreso.domain.entities.DetalleHabito
 import com.knexus.ergohabit.features.progreso.domain.entities.HabitoProgreso
@@ -9,21 +11,34 @@ import com.knexus.ergohabit.features.progreso.domain.entities.ProgresoDia
 import com.knexus.ergohabit.features.progreso.domain.entities.RegistroHabito
 import com.knexus.ergohabit.features.progreso.domain.repositories.ProgresoRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import java.util.Calendar
 import javax.inject.Inject
 
 class ProgresoRepositoryImpl @Inject constructor(
-    private val api: ProgresoApi
+    private val api: ProgresoApi,
+    private val dao: ProgresoDao
 ) : ProgresoRepository {
 
     override fun getHabitosProgreso(idUsuario: Int): Flow<Result<List<HabitoProgreso>>> = flow {
+        // 1. Emitir datos locales (Carga instantánea)
+        val local = dao.getAllHabitos().first()
+        if (local.isNotEmpty()) {
+            emit(Result.success(local.map { it.toDomain() }))
+        }
+
         try {
+            // 2. Carga desde API
             val response = api.getHabitosProgreso(idUsuario)
-            val habitos = response.map { it.toDomain() }
-            emit(Result.success(habitos))
+            val domainHabitos = response.map { it.toDomain() }
+            
+            // 3. Sincronizar Room
+            dao.insertHabitos(domainHabitos.map { it.toEntity() })
+            
+            emit(Result.success(domainHabitos))
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            if (local.isEmpty()) emit(Result.failure(e))
         }
     }
 
@@ -36,7 +51,6 @@ class ProgresoRepositoryImpl @Inject constructor(
             emit(Result.failure(e))
         }
     }
-
 
     private fun ordenarSemanaNatural(
         datos: List<DatoGraficaDto>, 
@@ -66,7 +80,6 @@ class ProgresoRepositoryImpl @Inject constructor(
             
             val valorReal = if (idHabito == 4) datoDto?.totalAlertas?.toFloat() ?: 0f else datoDto?.valor ?: 0f
             
-
             val cumplida = if (idHabito == 4) {
                 datoDto?.totalAlertas == 0 && (index <= indexHoyReal)
             } else {
@@ -82,75 +95,81 @@ class ProgresoRepositoryImpl @Inject constructor(
     }
 
     override fun getDetalleHabito(idUsuario: Int, idHabito: Int): Flow<Result<DetalleHabito>> = flow {
+        // 1. Intentar cargar de Room primero
+        val habitBase = dao.getHabitoById(idHabito)
+        val localRegistros = dao.getRegistrosByHabito(idHabito).first()
+        
+        if (habitBase != null && localRegistros.isNotEmpty()) {
+            emit(Result.success(DetalleHabito(
+                idHabito = idHabito,
+                titulo = habitBase.tituloSeccion ?: habitBase.nombre.uppercase(),
+                metaValor = when(idHabito){ 2 -> 7.04f; else -> 8f }, // Meta visual orientativa
+                leyendaPositiva = habitBase.leyendaPositiva ?: "Verde = meta cumplida",
+                leyendaNegativa = habitBase.leyendaNegativa ?: "Rojo = meta no cumplida",
+                registros = localRegistros.map { it.toDomain() }
+            )))
+        }
+
         try {
-            when (idHabito) {
-                1 -> {
-                    val response = api.getProgresoSemanalSueno()
-                    emit(Result.success(DetalleHabito(
-                        idHabito = 1,
-                        titulo = response.tituloSeccion ?: "HORAS DE SUEÑO",
-                        metaValor = 8f, 
-                        registros = ordenarSemanaNatural(response.datosGrafica, 1),
-                        leyendaPositiva = "Verde = meta cumplida",
-                        leyendaNegativa = "Rojo = meta no cumplida"
-                    )))
-                }
-                2 -> {
-                    val response = api.getProgresoSemanalAgua()
-                    emit(Result.success(DetalleHabito(
-                        idHabito = 2,
-                        titulo = response.tituloSeccion ?: "HIDRATACIÓN (L)",
-                        metaValor = 7.04f, 
-                        registros = ordenarSemanaNatural(response.datosGrafica, 2),
-                        leyendaPositiva = "Verde = meta cumplida",
-                        leyendaNegativa = "Rojo = meta no cumplida"
-                    )))
-                }
-                3 -> {
-                    val response = api.getProgresoSemanalEjercicio()
-                    emit(Result.success(DetalleHabito(
-                        idHabito = 3,
-                        titulo = response.tituloSeccion ?: "DISTANCIA RECORRIDA (KM)",
-                        metaValor = 8f, 
-                        registros = ordenarSemanaNatural(response.datosGrafica, 3),
-                        leyendaPositiva = "Verde = meta cumplida",
-                        leyendaNegativa = "Rojo = meta no cumplida"
-                    )))
-                }
-                4 -> {
-                    val response = api.getProgresoSemanalPostura()
-                    emit(Result.success(DetalleHabito(
-                        idHabito = 4,
-                        titulo = response.tituloSeccion ?: "ALERTAS DE POSTURA",
-                        metaValor = 0f, 
-                        registros = ordenarSemanaNatural(response.datosGrafica, 4),
-                        leyendaPositiva = "", 
-                        leyendaNegativa = response.mensajeMeta
-                    )))
-                }
-                else -> {
-                    val response = api.getDetalleHabito(idUsuario, idHabito)
-                    emit(Result.success(response.toDomain()))
-                }
+            val response = when (idHabito) {
+                1 -> api.getProgresoSemanalSueno()
+                2 -> api.getProgresoSemanalAgua()
+                3 -> api.getProgresoSemanalEjercicio()
+                4 -> api.getProgresoSemanalPostura()
+                else -> throw Exception("Hábito no soportado")
             }
+
+            val registrosOrdenados = ordenarSemanaNatural(response.datosGrafica, idHabito)
+            
+            val detalle = DetalleHabito(
+                idHabito = idHabito,
+                titulo = response.tituloSeccion ?: "DETALLE",
+                metaValor = when(idHabito){ 2 -> 7.04f; else -> 8f },
+                leyendaPositiva = if (idHabito == 4) "" else "Verde = meta cumplida",
+                leyendaNegativa = if (idHabito == 4) response.mensajeMeta else "Rojo = meta no cumplida",
+                registros = registrosOrdenados
+            )
+
+            // 2. Actualizar Room de forma atómica
+            val habitEntity = dao.getHabitoById(idHabito) ?: HabitoProgreso(idHabito, "", "", "", 0).toEntity()
+            dao.updateDetalleHabito(
+                idHabito, 
+                habitEntity.copy(
+                    tituloSeccion = detalle.titulo,
+                    leyendaPositiva = detalle.leyendaPositiva,
+                    leyendaNegativa = detalle.leyendaNegativa
+                ),
+                registrosOrdenados.map { it.toEntity(idHabito) }
+            )
+
+            emit(Result.success(detalle))
         } catch (e: Exception) {
-            val registrosDinamicos = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom").map { dia ->
-                RegistroHabito(dia, 0f, false)
-            }
-            emit(Result.success(DetalleHabito(idHabito, "ACTIVIDAD", 30f, "Meta cumplida", "Meta no cumplida", registrosDinamicos)))
+            if (localRegistros.isEmpty()) emit(Result.failure(e))
         }
     }
 
     override fun getFraseAleatoria(): Flow<Result<com.knexus.ergohabit.features.progreso.domain.entities.Frase>> = flow {
+        // 1. Carga instantánea desde Room
+        val local = dao.getFraseDia().first()
+        if (local != null) {
+            emit(Result.success(local.toDomain()))
+        }
+
         try {
+            // 2. Fetch de la API
             val response = api.getFraseAleatoria()
-            emit(Result.success(com.knexus.ergohabit.features.progreso.domain.entities.Frase(
+            val frase = com.knexus.ergohabit.features.progreso.domain.entities.Frase(
                 id = response.idFrase,
                 categoria = response.categoria,
                 texto = response.texto
-            )))
+            )
+            
+            // 3. Sincronizar Room
+            dao.insertFrase(frase.toEntity())
+            
+            emit(Result.success(frase))
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            if (local == null) emit(Result.failure(e))
         }
     }
 }

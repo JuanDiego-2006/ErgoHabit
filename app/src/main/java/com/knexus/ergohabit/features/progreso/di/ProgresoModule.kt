@@ -22,7 +22,10 @@ object ProgresoModule {
 
     @Provides
     @Singleton
-    fun provideProgresoRepository(api: ProgresoApi): ProgresoRepository {
-        return ProgresoRepositoryImpl(api)
+    fun provideProgresoRepository(
+        api: ProgresoApi,
+        dao: com.knexus.ergohabit.core.database.dao.ProgresoDao
+    ): ProgresoRepository {
+        return ProgresoRepositoryImpl(api, dao)
     }
 }

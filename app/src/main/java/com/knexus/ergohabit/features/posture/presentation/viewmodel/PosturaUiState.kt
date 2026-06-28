@@ -6,5 +6,10 @@ data class PosturaUiState(
     val esCorrecta: Boolean = true,
     val mensaje: String = "Inactivo",
     val estaMonitoreando: Boolean = false,
-    val conteoVibraciones: Int = 0
+    val conteoVibraciones: Int = 0,
+    
+    // --- NUEVO: Sincronización de Agua ---
+    val aguaPorcentaje: Int = 0,
+    val aguaMetaTexto: String = "Meta: --",
+    val nombreUsuario: String = "Usuario"
 )

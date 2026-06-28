@@ -1,5 +1,6 @@
 package com.knexus.ergohabit.features.tareas.data.mapper
 
+import com.knexus.ergohabit.core.database.entities.TareaEntity
 import com.knexus.ergohabit.features.tareas.data.models.TareaDto
 import com.knexus.ergohabit.features.tareas.data.models.TareasResponseDto
 import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
@@ -15,6 +16,31 @@ fun TareaDto.toDomain(): TareaEnfoque {
         duracionText = dText,
         idEstado = this.idEstado ?: 1,
         duracionMinutos = minutos,
+        fechaInicioCronometro = this.fechaInicioCronometro
+    )
+}
+
+fun TareaEnfoque.toEntity(esCompletada: Boolean): TareaEntity {
+    return TareaEntity(
+        id = this.id,
+        titulo = this.titulo,
+        categoria = this.categoria,
+        duracionText = this.duracionText,
+        idEstado = this.idEstado,
+        duracionMinutos = this.duracionMinutos,
+        fechaInicioCronometro = this.fechaInicioCronometro,
+        esCompletada = esCompletada
+    )
+}
+
+fun TareaEntity.toDomain(): TareaEnfoque {
+    return TareaEnfoque(
+        id = this.id,
+        titulo = this.titulo,
+        categoria = this.categoria,
+        duracionText = this.duracionText,
+        idEstado = this.idEstado,
+        duracionMinutos = this.duracionMinutos,
         fechaInicioCronometro = this.fechaInicioCronometro
     )
 }

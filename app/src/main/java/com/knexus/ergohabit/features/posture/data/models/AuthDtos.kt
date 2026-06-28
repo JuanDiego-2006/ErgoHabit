@@ -23,9 +23,7 @@ data class RegisterRequestDto(
     @SerializedName("idRol") val idRol: Int = 2
 )
 
-/**
- * DTO para la respuesta del registro (Usuario creado).
- */
+
 data class UserResponseDto(
     @SerializedName("id") val id: Int,
     @SerializedName("nombre") val nombre: String,

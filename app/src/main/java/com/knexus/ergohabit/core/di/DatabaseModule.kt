@@ -38,4 +38,16 @@ object DatabaseModule {
     fun provideUsuarioPerfilDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.UsuarioPerfilDao {
         return database.usuarioPerfilDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideTareaDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.TareaDao {
+        return database.tareaDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideProgresoDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.ProgresoDao {
+        return database.progresoDao()
+    }
 }

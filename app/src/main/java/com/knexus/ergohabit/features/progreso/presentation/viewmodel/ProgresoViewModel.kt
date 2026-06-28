@@ -18,20 +18,25 @@ import javax.inject.Inject
 class ProgresoViewModel @Inject constructor(
     private val getHabitosProgresoUseCase: GetHabitosProgresoUseCase,
     private val getFraseAleatoriaUseCase: GetFraseAleatoriaUseCase,
-    private val getDetalleHabitoUseCase: GetDetalleHabitoUseCase
+    private val getDetalleHabitoUseCase: GetDetalleHabitoUseCase,
+    private val sessionManager: com.knexus.ergohabit.core.session.SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProgresoUiState())
     val uiState: StateFlow<ProgresoUiState> = _uiState.asStateFlow()
 
     init {
-        loadProgreso(1)
+        val idUsuario = sessionManager.fetchUserId()
+        if (idUsuario != -1) {
+            loadProgreso(idUsuario)
+        }
     }
 
     fun seleccionarHabito(idHabito: Int) {
+        val idUsuario = sessionManager.fetchUserId()
         viewModelScope.launch {
             _uiState.update { it.copy(idHabitoSeleccionado = idHabito, isLoading = true) }
-            getDetalleHabitoUseCase(1, idHabito).collect { result ->
+            getDetalleHabitoUseCase(idUsuario, idHabito).collect { result ->
                 result.onSuccess { detalle ->
                     _uiState.update { it.copy(detalleHabito = detalle, isLoading = false) }
                 }.onFailure { error ->

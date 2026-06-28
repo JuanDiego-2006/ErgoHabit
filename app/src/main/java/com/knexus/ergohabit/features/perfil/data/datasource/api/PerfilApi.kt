@@ -21,4 +21,7 @@ interface PerfilApi {
     suspend fun uploadFoto(
         @Part foto: MultipartBody.Part
     ): FotoResponseDto
+
+    @DELETE("api/v1/usuarios/{id}")
+    suspend fun eliminarPerfil(@Path("id") idUsuario: Int): com.knexus.ergohabit.features.tareas.data.models.MessageResponseDto
 }

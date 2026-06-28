@@ -7,6 +7,8 @@ import com.knexus.ergohabit.features.perfil.domain.entities.UsuarioPerfil
 import com.knexus.ergohabit.features.perfil.domain.usecases.GetPerfilUseCase
 import com.knexus.ergohabit.features.perfil.domain.usecases.UpdateFotoPerfilUseCase
 import com.knexus.ergohabit.features.perfil.domain.usecases.UpdatePerfilUseCase
+import com.knexus.ergohabit.features.perfil.domain.usecases.ClearLocalProfileUseCase
+import com.knexus.ergohabit.features.perfil.domain.usecases.EliminarPerfilUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,11 +33,29 @@ class PerfilViewModel @Inject constructor(
     private val getPerfilUseCase: GetPerfilUseCase,
     private val updatePerfilUseCase: UpdatePerfilUseCase,
     private val updateFotoPerfilUseCase: UpdateFotoPerfilUseCase,
+    private val clearLocalProfileUseCase: ClearLocalProfileUseCase,
+    private val eliminarPerfilUseCase: EliminarPerfilUseCase,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PerfilUiState())
     val uiState: StateFlow<PerfilUiState> = _uiState.asStateFlow()
+
+    fun eliminarCuenta(onDeleteSuccess: () -> Unit) {
+        val idUsuario = sessionManager.fetchUserId()
+        if (idUsuario == -1) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            eliminarPerfilUseCase(idUsuario).onSuccess {
+                clearLocalProfileUseCase()
+                sessionManager.clearSession()
+                onDeleteSuccess()
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.message, isLoading = false) }
+            }
+        }
+    }
 
     init {
         cargarPerfil()
@@ -136,6 +156,7 @@ class PerfilViewModel @Inject constructor(
 
     fun cerrarSesion(onLogoutSuccess: () -> Unit) {
         viewModelScope.launch {
+            clearLocalProfileUseCase()
             sessionManager.clearSession()
             onLogoutSuccess()
         }

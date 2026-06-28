@@ -1,31 +1,61 @@
 package com.knexus.ergohabit.features.tareas.data.repositories
 
 import com.google.gson.Gson
+import com.knexus.ergohabit.core.database.dao.TareaDao
 import com.knexus.ergohabit.core.database.dao.TareaProgresoDao
 import com.knexus.ergohabit.core.database.entities.TareaProgresoEntity
 import com.knexus.ergohabit.features.tareas.data.datasource.api.TareaApi
 import com.knexus.ergohabit.features.tareas.data.mapper.toDomain
+import com.knexus.ergohabit.features.tareas.data.mapper.toEntity
 import com.knexus.ergohabit.features.tareas.data.models.MessageResponseDto
 import com.knexus.ergohabit.features.tareas.data.models.TareaCreateRequestDto
 import com.knexus.ergohabit.features.tareas.domain.entities.TareaEnfoque
 import com.knexus.ergohabit.features.tareas.domain.entities.TareasEstado
 import com.knexus.ergohabit.features.tareas.domain.repositories.TareaRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import retrofit2.HttpException
 import javax.inject.Inject
 
 class TareaRepositoryImpl @Inject constructor(
     private val api: TareaApi,
-    private val dao: TareaProgresoDao
+    private val daoProgreso: TareaProgresoDao,
+    private val daoTarea: TareaDao
 ) : TareaRepository {
 
     override fun getTareas(): Flow<Result<TareasEstado>> = flow {
+        // 1. Emitir datos locales primero
+        val pendientesLocales = daoTarea.getTareasPendientes().first().map { it.toDomain() }
+        val completadasLocales = daoTarea.getTareasCompletadas().first().map { it.toDomain() }
+        
+        if (pendientesLocales.isNotEmpty() || completadasLocales.isNotEmpty()) {
+            emit(Result.success(TareasEstado(
+                pendientes = pendientesLocales,
+                completadas = completadasLocales,
+                totalPendientesText = "PENDIENTES · ${pendientesLocales.size}",
+                totalCompletadasText = "COMPLETADAS · ${completadasLocales.size}"
+            )))
+        }
+
         try {
+            // 2. Fetch de la API
             val response = api.getTareas()
-            emit(Result.success(response.toDomain()))
+            val estado = response.toDomain()
+            
+            // 3. Guardar en Room
+            val todasLasEntidades = estado.pendientes.map { it.toEntity(esCompletada = false) } +
+                                    estado.completadas.map { it.toEntity(esCompletada = true) }
+            
+            daoTarea.clearTareas()
+            daoTarea.insertTareas(todasLasEntidades)
+            
+            emit(Result.success(estado))
         } catch (e: Exception) {
-            emit(Result.failure(parseError(e)))
+            // Si falla la API y no había datos locales, emitir el error
+            if (pendientesLocales.isEmpty() && completadasLocales.isEmpty()) {
+                emit(Result.failure(parseError(e)))
+            }
         }
     }
 
@@ -116,14 +146,14 @@ class TareaRepositoryImpl @Inject constructor(
 
     override suspend fun saveLocalProgress(idTarea: Int, restante: Int, inicial: Int, endTime: Long) {
         val entity = TareaProgresoEntity(idTarea, restante, inicial, endTime)
-        dao.insertProgreso(entity)
+        daoProgreso.insertProgreso(entity)
     }
 
     override suspend fun getLocalProgress(idTarea: Int): TareaProgresoEntity? {
-        return dao.getProgresoTarea(idTarea)
+        return daoProgreso.getProgresoTarea(idTarea)
     }
 
     override suspend fun clearLocalProgress(idTarea: Int) {
-        dao.deleteProgreso(idTarea)
+        daoProgreso.deleteProgreso(idTarea)
     }
 }

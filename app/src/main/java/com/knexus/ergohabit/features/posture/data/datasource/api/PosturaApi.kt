@@ -6,9 +6,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 
-/**
- * Interfaz de Retrofit para las peticiones de postura al servidor.
- */
+
 interface PosturaApi {
 
     @GET("postura/{idUsuario}")

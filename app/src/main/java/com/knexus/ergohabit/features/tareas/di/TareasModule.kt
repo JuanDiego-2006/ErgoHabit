@@ -23,7 +23,11 @@ object TareasModule {
 
     @Provides
     @Singleton
-    fun provideTareaRepository(api: TareaApi, dao: TareaProgresoDao): TareaRepository {
-        return TareaRepositoryImpl(api, dao)
+    fun provideTareaRepository(
+        api: TareaApi, 
+        daoProgreso: TareaProgresoDao,
+        daoTarea: com.knexus.ergohabit.core.database.dao.TareaDao
+    ): TareaRepository {
+        return TareaRepositoryImpl(api, daoProgreso, daoTarea)
     }
 }
