@@ -14,20 +14,25 @@ import com.knexus.ergohabit.ui.theme.*
 
 // Solo Hábitos hoy y Racha — sin Puntos
 @Composable
-fun FilaEstadisticas(vibraciones: Int) {
+fun FilaEstadisticas(
+    vibraciones: Int,
+    habitosCompletados: Int = 0,
+    habitosTotal: Int = 4,
+    rachaDias: Int = 0
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TarjetaEstadistica(
-            valor = "1/4",
+            valor = "$habitosCompletados/$habitosTotal",
             label = "Hábitos hoy",
             colorFondo = BgWhite,
             colorTexto = TextPrimary,
             modifier = Modifier.weight(1f)
         )
         TarjetaEstadistica(
-            valor = "12 días",
+            valor = if (rachaDias > 0) "$rachaDias días" else "0 días",
             label = "Racha",
             colorFondo = PurpleLight,
             colorTexto = PurpleAccent,

@@ -1,7 +1,12 @@
 package com.knexus.ergohabit.features.progreso.data.repositories
 
-import com.knexus.ergohabit.features.progreso.data.datasource.api.ProgresoApi
-import com.knexus.ergohabit.features.progreso.data.mapper.toDomain
+import com.knexus.ergohabit.core.session.SessionManager
+import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
+import com.knexus.ergohabit.features.posture.data.datasource.api.PosturaApi
+import com.knexus.ergohabit.features.posture.data.models.HistorialHabitoResponse
+import com.knexus.ergohabit.features.posture.data.models.ProgresoPosturaResponseDto
+import com.knexus.ergohabit.features.progreso.data.datasource.api.ProgresoDiarioApi
+import com.knexus.ergohabit.features.progreso.data.models.ProgresoDiarioDto
 import com.knexus.ergohabit.features.progreso.domain.entities.DetalleHabito
 import com.knexus.ergohabit.features.progreso.domain.entities.HabitoProgreso
 import com.knexus.ergohabit.features.progreso.domain.entities.ProgresoDia
@@ -10,16 +15,19 @@ import com.knexus.ergohabit.features.progreso.domain.repositories.ProgresoReposi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 class ProgresoRepositoryImpl @Inject constructor(
-    private val api: ProgresoApi
+    private val progresoDiarioApi: ProgresoDiarioApi,
+    private val habitosApi: HabitosApi,
+    private val posturaApi: PosturaApi,
+    private val sessionManager: SessionManager
 ) : ProgresoRepository {
 
     override fun getHabitosProgreso(idUsuario: Int): Flow<Result<List<HabitoProgreso>>> = flow {
         try {
-            val response = api.getHabitosProgreso(idUsuario)
-            val habitos = response.map { it.toDomain() }
-            emit(Result.success(habitos))
+            val progreso = progresoDiarioApi.getProgresoDiario(resolveUserId(idUsuario))
+            emit(Result.success(progreso.toHabitosProgreso()))
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
@@ -27,9 +35,23 @@ class ProgresoRepositoryImpl @Inject constructor(
 
     override fun getTendenciaGeneral(idUsuario: Int): Flow<Result<Pair<String, List<ProgresoDia>>>> = flow {
         try {
-            val response = api.getTendenciaGeneral(idUsuario)
-            val tendencia = response.datos.map { it.toDomain() }
-            emit(Result.success(response.porcentaje to tendencia))
+            val progreso = progresoDiarioApi.getProgresoDiario(resolveUserId(idUsuario))
+            val promedio = listOf(
+                progreso.porcentajeSueno,
+                progreso.porcentajeAgua,
+                progreso.porcentajeEjercicio,
+                progreso.porcentajeNutricion
+            ).average()
+
+            val historialAgua = habitosApi.obtenerProgresoAgua()
+            val tendencia = historialAgua.datosGrafica.mapIndexed { index, item ->
+                ProgresoDia(
+                    dia = index + 1,
+                    valor = (item.valor / 3.0).toFloat().coerceIn(0f, 1f)
+                )
+            }
+
+            emit(Result.success("${promedio.roundToInt()}%" to tendencia))
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
@@ -37,92 +59,69 @@ class ProgresoRepositoryImpl @Inject constructor(
 
     override fun getDetalleHabito(idUsuario: Int, idHabito: Int): Flow<Result<DetalleHabito>> = flow {
         try {
-            val response = api.getDetalleHabito(idUsuario, idHabito)
-            emit(Result.success(response.toDomain()))
+            resolveUserId(idUsuario)
+            val detalle = when (idHabito) {
+                1 -> habitosApi.obtenerProgresoSueno().toDetalleHabito(1, 8f)
+                2 -> habitosApi.obtenerProgresoAgua().toDetalleHabito(2, 2f)
+                3 -> habitosApi.obtenerProgresoEjercicio().toDetalleHabito(3, 8f)
+                4 -> posturaApi.obtenerProgresoSemanal().toDetallePostura()
+                else -> throw IllegalArgumentException("Hábito no soportado")
+            }
+            emit(Result.success(detalle))
         } catch (e: Exception) {
-            // Lógica: Semana actual (Lunes a Domingo) para mantener el orden solicitado
-            val diasSemana = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
-            val calendar = java.util.Calendar.getInstance()
-            
-            // Obtener el índice del día actual (Lunes = 0, ..., Domingo = 6)
-            val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
-            val todayIndex = when (dayOfWeek) {
-                java.util.Calendar.MONDAY -> 0
-                java.util.Calendar.TUESDAY -> 1
-                java.util.Calendar.WEDNESDAY -> 2
-                java.util.Calendar.THURSDAY -> 3
-                java.util.Calendar.FRIDAY -> 4
-                java.util.Calendar.SATURDAY -> 5
-                java.util.Calendar.SUNDAY -> 6
-                else -> 0
-            }
-
-            val registrosDinamicos = (0..6).map { i ->
-                val nombreDia = if (i == todayIndex) "Hoy" else diasSemana[i]
-                
-                // Valores de prueba realistas
-                val valor = when(idHabito) {
-                    1 -> (60..95).random() / 10f // Sueño: 6.0 a 9.5h
-                    2 -> (12..25).random() / 10f // Hidratación: 1.2 a 2.5L
-                    3 -> (20..110).random() / 10f // Ejercicio: 2.0 a 11.0km
-                    4 -> (1..10).random().toFloat() // Postura: 1 a 10 alertas
-                    else -> (15..50).random().toFloat()
-                }
-                val meta = when(idHabito) {
-                    1 -> 8f
-                    2 -> 2f
-                    3 -> 8f 
-                    4 -> 0f // Para alertas, 0 es lo ideal
-                    else -> 30f
-                }
-                // Para postura, cualquier alerta se marca en rojo (o invertimos la lógica)
-                val cumplida = if(idHabito == 4) false else valor >= meta
-                RegistroHabito(nombreDia, valor, cumplida)
-            }
-
-            val mockDetalle = when(idHabito) {
-                1 -> DetalleHabito(
-                    idHabito = 1,
-                    titulo = "HORAS DE SUEÑO",
-                    metaValor = 8f,
-                    registros = registrosDinamicos,
-                    leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta no cumplida"
-                )
-                2 -> DetalleHabito(
-                    idHabito = 2,
-                    titulo = "HIDRATACIÓN (L)",
-                    metaValor = 2f,
-                    registros = registrosDinamicos,
-                    leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta no cumplida"
-                )
-                3 -> DetalleHabito(
-                    idHabito = 3,
-                    titulo = "DISTANCIA RECORRIDA (KM)",
-                    metaValor = 8f,
-                    registros = registrosDinamicos,
-                    leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta no cumplida"
-                )
-                4 -> DetalleHabito(
-                    idHabito = 4,
-                    titulo = "ALERTAS DE POSTURA",
-                    metaValor = 0f,
-                    registros = registrosDinamicos,
-                    leyendaPositiva = "", 
-                    leyendaNegativa = "Menos alertas ⚠️ = mejor postura durante la semana 📉"
-                )
-                else -> DetalleHabito(
-                    idHabito = idHabito,
-                    titulo = "ACTIVIDAD",
-                    metaValor = 30f,
-                    registros = registrosDinamicos,
-                    leyendaPositiva = "Verde = meta cumplida",
-                    leyendaNegativa = "Rojo = meta no cumplida"
-                )
-            }
-            emit(Result.success(mockDetalle))
+            emit(Result.failure(e))
         }
+    }
+
+    private fun resolveUserId(fallback: Int): Int {
+        return sessionManager.fetchUserId() ?: fallback
+    }
+
+    private fun ProgresoDiarioDto.toHabitosProgreso(): List<HabitoProgreso> = listOf(
+        HabitoProgreso(1, "Sueño", "🌙", "#7C6FF7", porcentajeSueno.toInt().coerceIn(0, 100)),
+        HabitoProgreso(2, "Agua", "💧", "#29B6F6", porcentajeAgua.toInt().coerceIn(0, 100)),
+        HabitoProgreso(3, "Ejercicio", "🏃", "#34C97A", porcentajeEjercicio.toInt().coerceIn(0, 100)),
+        HabitoProgreso(4, "Postura", "🧘", "#2E7D52", posturaPct(totalAlertasPostura))
+    )
+
+    private fun posturaPct(alertas: Int): Int = when {
+        alertas == 0 -> 100
+        alertas <= 3 -> 75
+        alertas <= 7 -> 50
+        else -> 25
+    }
+
+    private fun HistorialHabitoResponse.toDetalleHabito(idHabito: Int, metaValor: Float): DetalleHabito {
+        return DetalleHabito(
+            idHabito = idHabito,
+            titulo = tituloSeccion,
+            metaValor = metaValor,
+            leyendaPositiva = "Verde = meta cumplida",
+            leyendaNegativa = "Rojo = meta no cumplida",
+            registros = datosGrafica.map {
+                RegistroHabito(
+                    etiqueta = it.diaSemana,
+                    valor = it.valor.toFloat(),
+                    esMetaCumplida = it.metaCumplida
+                )
+            }
+        )
+    }
+
+    private fun ProgresoPosturaResponseDto.toDetallePostura(): DetalleHabito {
+        return DetalleHabito(
+            idHabito = 4,
+            titulo = "ALERTAS DE POSTURA",
+            metaValor = 0f,
+            leyendaPositiva = "",
+            leyendaNegativa = mensajeMeta.ifBlank { "Menos alertas = mejor postura" },
+            registros = datosGrafica.map {
+                RegistroHabito(
+                    etiqueta = it.diaSemana,
+                    valor = it.totalAlertas.toFloat(),
+                    esMetaCumplida = it.totalAlertas == 0
+                )
+            }
+        )
     }
 }

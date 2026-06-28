@@ -20,13 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
-import com.knexus.ergohabit.features.tareas.presentation.components.CronometroSeccion
-import com.knexus.ergohabit.features.tareas.presentation.components.ItemTarea
-import com.knexus.ergohabit.features.tareas.presentation.components.MensajeExitoDialog
-import com.knexus.ergohabit.features.tareas.presentation.components.SelectorDuracionDialog
-import com.knexus.ergohabit.features.tareas.presentation.components.SheetMasTiempo
-import com.knexus.ergohabit.features.tareas.presentation.components.SheetNuevaTarea
-import com.knexus.ergohabit.features.tareas.presentation.components.SheetTareaFin
+import com.knexus.ergohabit.features.tareas.presentation.components.*
 import com.knexus.ergohabit.features.tareas.presentation.viewmodel.TareaViewModel
 import com.knexus.ergohabit.ui.theme.*
 
@@ -39,6 +33,32 @@ fun TareaScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // --- MANEJO DE INTENT DE NOTIFICACIÓN ---
+    LaunchedEffect(Unit) {
+        val intent = (context as? android.app.Activity)?.intent
+        val frase = intent?.getStringExtra("frase")
+        val accion = intent?.getStringExtra("accion")
+        if (frase != null && accion != null) {
+            viewModel.mostrarAlertaDesdeNotificacion(frase, accion)
+            intent.removeExtra("frase")
+            intent.removeExtra("accion")
+        }
+    }
+
+    // --- MANEJO DE MENSAJES (ÉXITO Y ERROR) ---
+    LaunchedEffect(uiState.error, uiState.successMessage) {
+        if (uiState.error != null) {
+            snackbarHostState.showSnackbar(uiState.error!!)
+            viewModel.clearMessages()
+        }
+        if (uiState.successMessage != null) {
+            snackbarHostState.showSnackbar(uiState.successMessage!!)
+            viewModel.clearMessages()
+        }
+    }
 
     LaunchedEffect(mostrarCompletadoInicial) {
         if (mostrarCompletadoInicial) {
@@ -46,40 +66,31 @@ fun TareaScreen(
         }
     }
 
-    // ── DIÁLOGOS Y RECORDATORIOS (UI TONTA) ──
+    // ── DIÁLOGOS Y BOTTOM SHEETS ──
     if (uiState.mostrarRecordatorioEstiramiento) {
         AlertDialog(
             onDismissRequest = { viewModel.descartarRecordatorio() },
             title = { Text("¡Tiempo de estirar! 🧘", fontWeight = FontWeight.Bold) },
-            text = { 
-                Text("Has estado trabajando por 25 minutos. Tómate un breve respiro para estirar tu espalda y descansar la vista.") 
-            },
+            text = { Text("Has estado trabajando por 25 minutos. Tómate un breve respiro para estirar tu espalda.") },
             confirmButton = {
-                Button(
-                    onClick = { viewModel.descartarRecordatorio() },
-                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
-                ) {
+                Button(onClick = { viewModel.descartarRecordatorio() }, colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)) {
                     Text("¡Entendido!", color = Color.White)
                 }
             },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = BgWhite
+            shape = RoundedCornerShape(24.dp), containerColor = BgWhite
         )
     }
 
-    // ── BOTTOM SHEETS (CONTENIDO SEPARADO EN COMPONENTS) ──
     if (uiState.mostrarSheetNuevaTarea) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.mostrarSheetNuevaTarea(false) },
-            sheetState = sheetState,
-            containerColor = Color.White,
+            sheetState = sheetState, containerColor = Color.White,
             dragHandle = { BottomSheetDefaults.DragHandle(color = TextGray.copy(alpha = 0.3f)) }
         ) {
             SheetNuevaTarea(
                 titulo = uiState.nuevoTitulo,
                 onTituloChange = { viewModel.onTituloCambiado(it) },
-                // Usamos categorías fijas ya que no hay endpoint
-                categoriasNombres = listOf("Académica", "Trabajo", "Personal", "Salud"),
+                categoriasNombres = listOf("Académica", "Bienestar", "Laboral", "Enfoque Profundo", "Personal"),
                 categoriaSeleccionada = uiState.nuevaCategoriaNombre,
                 onCategoriaSelect = { viewModel.onCategoriaSeleccionada(it) },
                 duracionMinutos = uiState.nuevaDuracion,
@@ -130,110 +141,69 @@ fun TareaScreen(
     }
 
     if (uiState.mostrarMensajeExito) {
-        MensajeExitoDialog(
-            mensaje = uiState.mensajeExito,
-            onDismiss = { viewModel.descartarMensajeExito() }
-        )
+        MensajeExitoDialog(mensaje = uiState.mensajeExito, onDismiss = { viewModel.descartarMensajeExito() })
+    }
+
+    if (uiState.mostrarAlertaSalud) {
+        uiState.alertaSaludInfo?.let { info ->
+            AlertaSaludDialog(
+                frase = info.frase,
+                accion = info.accion,
+                onDismiss = { viewModel.descartarAlertaSalud() }
+            )
+        }
     }
 
     // ── ESTRUCTURA PRINCIPAL ──
     Scaffold(
         containerColor = BgMain,
-        bottomBar = { BarraNavegacionInferior(navController) }
+        bottomBar = { BarraNavegacionInferior(navController) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
             // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
-                    Text(
-                        text = "FOCO ACADÉMICO",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextGray,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = "Mis Tareas",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "FOCO ACADÉMICO", style = MaterialTheme.typography.labelSmall, color = TextGray, letterSpacing = 1.sp)
+                    Text(text = "Mis Tareas", style = MaterialTheme.typography.headlineMedium, color = TextPrimary, fontWeight = FontWeight.Bold)
                 }
-                IconButton(
-                    onClick = { viewModel.mostrarSheetNuevaTarea(true) },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(TextPrimary)
-                ) {
+                IconButton(onClick = { viewModel.mostrarSheetNuevaTarea(true) }, modifier = Modifier.clip(CircleShape).background(TextPrimary)) {
                     Icon(Icons.Default.Add, contentDescription = "Añadir", tint = Color.White)
                 }
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = uiState.tareasEstado?.totalPendientesText ?: "CARGANDO TAREAS...",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextGray,
-                fontWeight = FontWeight.Bold
-            )
-
+            Text(text = uiState.tareasEstado?.totalPendientesText ?: "CARGANDO TAREAS...", style = MaterialTheme.typography.labelMedium, color = TextGray, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Lista de Tareas
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 uiState.tareasEstado?.pendientes?.let { pendientes ->
                     items(pendientes) { tarea ->
                         ItemTarea(
-                            tarea = tarea,
-                            isSelected = uiState.tareaSeleccionada?.id == tarea.id,
-                            onClick = { viewModel.seleccionarTarea(tarea) }
+                            tarea = tarea, 
+                            isSelected = uiState.tareaSeleccionada?.id == tarea.id, 
+                            onClick = { viewModel.seleccionarTarea(tarea) },
+                            onDeleteClick = { viewModel.eliminarTarea(tarea.id) }
                         )
                     }
                 }
-                
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = uiState.tareasEstado?.totalCompletadasText ?: "",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextGray,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = uiState.tareasEstado?.totalCompletadasText ?: "", style = MaterialTheme.typography.labelMedium, color = TextGray, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-
                 uiState.tareasEstado?.completadas?.let { completadas ->
                     items(completadas) { tarea ->
                         ItemTarea(
-                            tarea = tarea,
-                            isSelected = uiState.tareaSeleccionada?.id == tarea.id,
-                            onClick = { viewModel.seleccionarTarea(tarea) }
+                            tarea = tarea, 
+                            isSelected = uiState.tareaSeleccionada?.id == tarea.id, 
+                            onClick = { viewModel.seleccionarTarea(tarea) },
+                            onDeleteClick = { viewModel.eliminarTarea(tarea.id) }
                         )
                     }
                 }
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Sección Cronómetro
-            CronometroSeccion(
-                tarea = uiState.tareaSeleccionada,
-                tiempoRestante = uiState.tiempoRestante,
-                isRunning = uiState.isTimerRunning,
-                onToggleTimer = { viewModel.toggleTimer() }
-            )
+            CronometroSeccion(tarea = uiState.tareaSeleccionada, tiempoRestante = uiState.tiempoRestante, isRunning = uiState.isTimerRunning, onToggleTimer = { viewModel.toggleTimer() })
         }
     }
 }

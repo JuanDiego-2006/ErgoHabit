@@ -12,45 +12,23 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
-import com.knexus.ergohabit.core.hardware.domain.GestorSonido
-import com.knexus.ergohabit.features.posture.domain.usecase.PosturaUseCase
+import com.knexus.ergohabit.features.posture.domain.GestorMonitoreoPostura
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class PostureForegroundService : Service() {
 
     @Inject
-    lateinit var posturaUseCase: PosturaUseCase
-
-    @Inject
-    lateinit var gestorSonido: GestorSonido
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    // Variable para controlar el trabajo de los sensores
-    private var monitoreoJob: Job? = null
+    lateinit var gestorMonitoreo: GestorMonitoreoPostura
 
     private val CHANNEL_ID = "ErgoHabitCanalPostura"
-    private var vibrandoAnteriormente = false
 
-    // 1. EL "ESCUCHADOR" DEL ESTADO DEL TELÉFONO
     private val estadoDispositivoReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                Intent.ACTION_SCREEN_OFF -> {
-                    // Pantalla apagada -> Matar sensores y apagar sonido
-                    pausarMonitoreo()
-                }
-                Intent.ACTION_SCREEN_ON -> {
-                    // Pantalla encendida (pero tal vez bloqueada) -> Verificamos
-                    verificarEstadoYReanudar()
-                }
-                Intent.ACTION_USER_PRESENT -> {
-                    // El usuario acaba de desbloquear el teléfono (PIN/Huella) -> Reanudamos
-                    verificarEstadoYReanudar()
-                }
+                Intent.ACTION_SCREEN_OFF -> gestorMonitoreo.pausar()
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> verificarEstadoYReanudar()
             }
         }
     }
@@ -58,8 +36,6 @@ class PostureForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         crearCanalNotificacion()
-
-        // Registramos los eventos que queremos escuchar del celular
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -71,83 +47,35 @@ class PostureForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notificacion = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Centinela Ergonómico")
-            .setContentText("Protegiendo tu postura...")
+            .setContentText("Protegiendo tu postura con sensores y cámara...")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
 
         startForeground(1, notificacion)
-
-        // Verificamos si podemos arrancar los sensores inmediatamente
+        gestorMonitoreo.iniciar()
         verificarEstadoYReanudar()
-
         return START_STICKY
     }
 
-    // 2. LÓGICA DE VERIFICACIÓN ESTRICTA
     private fun verificarEstadoYReanudar() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-
-        val isScreenOn = powerManager.isInteractive
-        val isLocked = keyguardManager.isKeyguardLocked
-
-        // Solo encendemos el sensor si la pantalla está ON y NO está bloqueada
-        if (isScreenOn && !isLocked) {
-            reanudarMonitoreo()
+        if (powerManager.isInteractive && !keyguardManager.isKeyguardLocked) {
+            gestorMonitoreo.reanudar()
         } else {
-            pausarMonitoreo()
+            gestorMonitoreo.pausar()
         }
-    }
-
-    // 3. FUNCIÓN PARA PRENDER SENSORES
-    private fun reanudarMonitoreo() {
-        if (monitoreoJob?.isActive == true) return
-
-        monitoreoJob = serviceScope.launch {
-            posturaUseCase().collect { entidad ->
-
-                // DOBLE CANDADO: Si por algún motivo el sensor capta movimiento
-                // mientras la pantalla está apagada o bloqueada, lo abortamos de inmediato.
-                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-
-                if (!powerManager.isInteractive || keyguardManager.isKeyguardLocked) {
-                    pausarMonitoreo()
-                    return@collect
-                }
-
-                val esIncorrectaAhora = !entidad.esCorrecta
-
-                if (esIncorrectaAhora) {
-                    gestorSonido.sonarAlerta()
-                } else if (vibrandoAnteriormente && !esIncorrectaAhora) {
-                    gestorSonido.detenerSonido()
-                }
-
-                vibrandoAnteriormente = esIncorrectaAhora
-            }
-        }
-    }
-
-    // 4. FUNCIÓN PARA APAGAR SENSORES (Ahorro de batería real)
-    private fun pausarMonitoreo() {
-        monitoreoJob?.cancel() // Apaga el flujo de datos del acelerómetro
-        monitoreoJob = null
-        gestorSonido.detenerSonido() // Silencia cualquier vibración atascada
-        vibrandoAnteriormente = false
     }
 
     override fun onDestroy() {
         super.onDestroy()
         try {
             unregisterReceiver(estadoDispositivoReceiver)
-        } catch (e: Exception) {
-            // Previene crasheos si se intenta des-registrar algo no registrado
+        } catch (_: Exception) {
         }
-        serviceScope.cancel()
-        gestorSonido.detenerSonido()
+        gestorMonitoreo.detener()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

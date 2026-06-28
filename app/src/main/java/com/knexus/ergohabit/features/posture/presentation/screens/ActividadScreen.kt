@@ -1,5 +1,10 @@
 package com.knexus.ergohabit.features.posture.presentation.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,10 +25,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TrackChanges
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -34,10 +44,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.knexus.ergohabit.features.posture.presentation.viewmodel.ActividadViewModel
 import com.knexus.ergohabit.ui.theme.ActividadAmarillo
@@ -61,6 +73,31 @@ fun ActividadScreen(
     onNavigateToConfigMeta: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val permisoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (concedido) viewModel.iniciarSensor()
+        else viewModel.onPermisoDenegado()
+    }
+
+    fun alternarSensor() {
+        if (state.sensorActivo) {
+            viewModel.detenerSensor()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val tienePermiso = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (tienePermiso) viewModel.iniciarSensor()
+            else permisoLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+        } else {
+            viewModel.iniciarSensor()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -264,6 +301,169 @@ fun ActividadScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // ── SENSOR DE PASOS ───────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White)
+                    .padding(20.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (state.sensorActivo) ActividadVerde else Color(0xFFE8EDE9)
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.DirectionsWalk,
+                                contentDescription = null,
+                                tint = if (state.sensorActivo) Color.White else TextSecondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sensor de actividad",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = when {
+                                    !state.sensorDisponible -> "No disponible en este dispositivo"
+                                    state.sensorActivo -> "Monitoreando tus pasos en tiempo real"
+                                    else -> "Activa el sensor al caminar o correr"
+                                },
+                                fontSize = 12.sp,
+                                color = if (state.sensorActivo) ActividadVerde else TextSecondary
+                            )
+                        }
+                        Text(
+                            text = if (state.sensorActivo) "ON" else "OFF",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (state.sensorActivo) ActividadVerde else TextSecondary
+                        )
+                    }
+
+                    if (state.sensorActivo || state.pasosSesion > 0) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(ActividadVerde.copy(alpha = 0.08f))
+                                    .padding(14.dp)
+                            ) {
+                                Text(
+                                    text = "${state.pasosSesion}",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = ActividadVerde
+                                )
+                                Text(
+                                    text = "pasos",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(GreenLight)
+                                    .padding(14.dp)
+                            ) {
+                                Text(
+                                    text = "%.2f".format(state.kmSesion),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = GreenPrimary
+                                )
+                                Text(
+                                    text = "km sesión",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    if (state.sensorActivo) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = ActividadVerde,
+                            trackColor = Color(0xFFE8EDE9)
+                        )
+                    }
+
+                    state.errorSensor?.let { error ->
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = error,
+                            fontSize = 12.sp,
+                            color = Color(0xFFD32F2F),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = { alternarSensor() },
+                            enabled = state.sensorDisponible && !state.isRegistrando,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (state.sensorActivo) Color(0xFF757575) else ActividadVerde
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = if (state.sensorActivo) "Detener" else "Iniciar",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.sincronizarSesion() },
+                            enabled = state.kmSesion >= 0.01f && !state.isRegistrando,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = if (state.isRegistrando) "Guardando..." else "Guardar",
+                                fontWeight = FontWeight.Bold,
+                                color = GreenPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             // ── CONFIGURAR META ───────────────────────────
             Box(
                 modifier = Modifier
@@ -385,7 +585,7 @@ fun ActividadScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "¡Te faltan ${"%.2f".format(state.kmRestantes)} km!",
+                        text = state.mensajeBanner,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
@@ -393,7 +593,7 @@ fun ActividadScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Una caminata de 15 minutos te acercará a tu meta 🚶",
+                        text = state.sugerenciaBanner,
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.9f),
                         textAlign = TextAlign.Center,

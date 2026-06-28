@@ -1,7 +1,11 @@
 package com.knexus.ergohabit.features.posture.presentation.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,14 +16,22 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.posture.presentation.components.FilaEstadisticas
@@ -44,7 +56,40 @@ fun PostureScreen(
     onNavigateToNutricion: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val estado by viewModel.estadoUi.collectAsState()
+    var tienePermisoCamara by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permisoCamaraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        tienePermisoCamara = concedido
+        if (concedido && !estado.estaMonitoreando) {
+            alternarMonitoreo(context, viewModel, estado.estaMonitoreando)
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refrescarDashboard()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val navegacionHabitos = mapOf(
+        "Agua" to onNavigateToHidratacion,
+        "Sueño" to onNavigateToSueno,
+        "Ejercicio" to onNavigateToActividad,
+        "Nutrición" to onNavigateToNutricion
+    )
 
     Scaffold(
         containerColor = BgMain,
@@ -57,8 +102,14 @@ fun PostureScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
+            val saludo = if (estado.nombreUsuario.isNotBlank()) {
+                "Buenos días, ${estado.nombreUsuario} 👋"
+            } else {
+                "Buenos días 👋"
+            }
+
             Text(
-                text = "Buenos días, Carlos 👋",
+                text = saludo,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black,
                 color = TextPrimary,
@@ -68,27 +119,30 @@ fun PostureScreen(
             TarjetaSensor(
                 isSensorActive = estado.estaMonitoreando,
                 gradosInclinacion = estado.gradosDisplay,
+                esCorrectaGlobal = estado.esCorrecta,
+                mensajeCamara = estado.mensajeCamara,
+                alertaPorCamara = estado.alertaPorCamara,
+                camaraActiva = estado.camaraActiva,
                 onToggleClick = {
-                    viewModel.alternarMonitoreo()
-                    val intent = Intent(context, PostureForegroundService::class.java)
-                    if (!estado.estaMonitoreando) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            context.startForegroundService(intent)
-                        } else {
-                            context.startService(intent)
-                        }
-                    } else {
-                        context.stopService(intent)
+                    if (!estado.estaMonitoreando && !tienePermisoCamara) {
+                        permisoCamaraLauncher.launch(Manifest.permission.CAMERA)
+                        return@TarjetaSensor
                     }
+                    alternarMonitoreo(context, viewModel, estado.estaMonitoreando)
                 }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-            FilaEstadisticas(vibraciones = estado.conteoVibraciones)
+            FilaEstadisticas(
+                vibraciones = estado.conteoVibraciones,
+                habitosCompletados = estado.habitosCompletados,
+                habitosTotal = estado.habitosTotal,
+                rachaDias = estado.rachaDias
+            )
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "MICRO-HÁBITOS · 1 DE 4 COMPLETADOS",
+                text = "MICRO-HÁBITOS · ${estado.habitosCompletados} DE ${estado.habitosTotal} COMPLETADOS",
                 fontSize = 11.sp,
                 color = TextSecondary,
                 letterSpacing = 0.06.sp,
@@ -96,46 +150,45 @@ fun PostureScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            HabitCard(
-                emoji = "💧",
-                name = "Agua",
-                meta = "Meta: 8 vasos",
-                pct = 75,
-                pctColor = GreenPrimary,
-                progressColor = GreenProgress,
-                completed = false,
-                onClick = { onNavigateToHidratacion() }
-            )
-            HabitCard(
-                emoji = "🌙",
-                name = "Sueño",
-                meta = "Meta: 8 horas",
-                pct = 88,
-                pctColor = PurpleAccent,
-                progressColor = PurpleAccent,
-                completed = true,
-                onClick = { onNavigateToSueno() }
-            )
-            HabitCard(
-                emoji = "🏃",
-                name = "Ejercicio",
-                meta = "Meta: 30 min",
-                pct = 67,
-                pctColor = GreenPrimary,
-                progressColor = GreenProgress,
-                completed = false,
-                onClick = { onNavigateToActividad() }
-            )
-            HabitCard(
-                emoji = "🍎",
-                name = "Nutrición",
-                meta = "Meta: 3 comidas",
-                pct = 67,
-                pctColor = GreenPrimary,
-                progressColor = GreenProgress,
-                completed = false,
-                onClick = { onNavigateToNutricion() }
-            )
+            estado.resumenHabitos.forEach { habito ->
+                val pctColor = when (habito.nombre) {
+                    "Sueño" -> PurpleAccent
+                    else -> GreenPrimary
+                }
+                val progressColor = when (habito.nombre) {
+                    "Sueño" -> PurpleAccent
+                    else -> GreenProgress
+                }
+
+                HabitCard(
+                    emoji = habito.emoji,
+                    name = habito.nombre,
+                    meta = habito.meta,
+                    pct = habito.pct,
+                    pctColor = pctColor,
+                    progressColor = progressColor,
+                    completed = habito.completado,
+                    onClick = { navegacionHabitos[habito.nombre]?.invoke() }
+                )
+            }
         }
+    }
+}
+
+private fun alternarMonitoreo(
+    context: android.content.Context,
+    viewModel: PosturaViewModel,
+    estaMonitoreando: Boolean
+) {
+    viewModel.alternarMonitoreo()
+    val intent = Intent(context, PostureForegroundService::class.java)
+    if (!estaMonitoreando) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    } else {
+        context.stopService(intent)
     }
 }

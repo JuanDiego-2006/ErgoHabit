@@ -13,38 +13,18 @@ class PerfilRepositoryImpl @Inject constructor(
 
     override fun getPerfil(idUsuario: Int): Flow<Result<UsuarioPerfil>> = flow {
         try {
-            // Intentar obtener de la API
             val perfil = api.getPerfil(idUsuario)
             emit(Result.success(perfil))
         } catch (e: Exception) {
-            // Datos de prueba (Mock) si falla la API
-            val mockPerfil = UsuarioPerfil(
-                id = idUsuario,
-                nombre = "ailyn",
-                primerApellido = "GARCÍA",
-                segundoApellido = "MÉNDEZ",
-                correo = "ailyn@gmail.com",
-                fotoUrl = null
-            )
-            emit(Result.success(mockPerfil))
+            emit(Result.failure(e))
         }
     }
 
     override suspend fun updateFotoPerfil(idUsuario: Int, fotoUri: String): Result<String> {
-        return try {
-            // Aquí iría la lógica para subir la imagen al servidor
-            Result.success(fotoUri)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return Result.failure(UnsupportedOperationException("Subida de foto pendiente de implementar"))
     }
 
     override suspend fun updatePerfil(perfil: UsuarioPerfil): Result<Unit> {
-        return try {
-            // Aquí iría la llamada a la API para actualizar los datos
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return Result.failure(UnsupportedOperationException("Actualización de perfil pendiente de implementar"))
     }
 }

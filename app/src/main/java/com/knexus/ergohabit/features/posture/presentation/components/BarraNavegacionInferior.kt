@@ -24,7 +24,6 @@ fun BarraNavegacionInferior(navController: NavHostController) {
     val items = listOf(
         NavItem("Inicio", Icons.Outlined.Home, NavRuta.Inicio),
         NavItem("Tareas", Icons.Outlined.CheckBoxOutlineBlank, NavRuta.Tareas()),
-        NavItem("Sensores", Icons.Outlined.ShowChart, NavRuta.Sensores),
         NavItem("Progreso", Icons.Outlined.BarChart, NavRuta.Progreso),
         NavItem("Perfil", Icons.Outlined.Person, NavRuta.Perfil)
     )

@@ -1,10 +1,12 @@
 package com.knexus.ergohabit.features.perfil.domain.entities
 
+import com.google.gson.annotations.SerializedName
+
 data class UsuarioPerfil(
-    val id: Int,
-    val nombre: String,
-    val primerApellido: String,
-    val segundoApellido: String,
-    val correo: String,
-    val fotoUrl: String? = null
+    @SerializedName("id") val id: Int,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("primerApellido") val primerApellido: String,
+    @SerializedName("segundoApellido") val segundoApellido: String,
+    @SerializedName("email") val correo: String,
+    @SerializedName("fotoUrl") val fotoUrl: String? = null
 )

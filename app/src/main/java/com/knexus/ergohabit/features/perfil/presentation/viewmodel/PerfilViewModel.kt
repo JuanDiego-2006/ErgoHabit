@@ -2,6 +2,7 @@ package com.knexus.ergohabit.features.perfil.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.knexus.ergohabit.core.session.SessionManager
 import com.knexus.ergohabit.features.perfil.domain.entities.UsuarioPerfil
 import com.knexus.ergohabit.features.perfil.domain.repositories.PerfilRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +24,8 @@ data class PerfilUiState(
 
 @HiltViewModel
 class PerfilViewModel @Inject constructor(
-    private val repository: PerfilRepository
+    private val repository: PerfilRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PerfilUiState())
@@ -34,9 +36,10 @@ class PerfilViewModel @Inject constructor(
     }
 
     private fun cargarPerfil() {
+        val userId = sessionManager.fetchUserId() ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            repository.getPerfil(1).collect { result ->
+            repository.getPerfil(userId).collect { result ->
                 result.onSuccess { perfil ->
                     _uiState.value = _uiState.value.copy(
                         usuario = perfil,
@@ -100,8 +103,9 @@ class PerfilViewModel @Inject constructor(
     }
 
     fun actualizarFoto(uri: String) {
+        val userId = sessionManager.fetchUserId() ?: return
         viewModelScope.launch {
-            repository.updateFotoPerfil(1, uri).onSuccess { nuevaUri ->
+            repository.updateFotoPerfil(userId, uri).onSuccess { nuevaUri ->
                 _uiState.value = _uiState.value.copy(
                     usuario = _uiState.value.usuario?.copy(fotoUrl = nuevaUri)
                 )
@@ -111,8 +115,9 @@ class PerfilViewModel @Inject constructor(
 
     fun cerrarSesion(onLogoutSuccess: () -> Unit) {
         viewModelScope.launch {
-            // Aquí iría la lógica para limpiar el token, sesión, etc.
-            // repository.logout()
+            // --- CAMBIO REALIZADO: Limpiar token y cerrar sesión ---
+            sessionManager.clearSession()
+            // -------------------------------------------------------
             onLogoutSuccess()
         }
     }

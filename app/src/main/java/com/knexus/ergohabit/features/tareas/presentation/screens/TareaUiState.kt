@@ -7,6 +7,7 @@ data class TareaUiState(
     val isLoading: Boolean = false,
     val tareasEstado: TareasEstado? = null,
     val error: String? = null,
+    val successMessage: String? = null, // Para mostrar en el Snackbar
     
     // Timer
     val tareaSeleccionada: TareaEnfoque? = null,
@@ -27,5 +28,9 @@ data class TareaUiState(
     val mostrarSheetMasTiempo: Boolean = false,
     val tiempoAdicional: Int = 15,
     val mostrarMensajeExito: Boolean = false,
-    val mensajeExito: String = ""
+    val mensajeExito: String = "",
+    
+    // Alerta Salud (API cronometro)
+    val mostrarAlertaSalud: Boolean = false,
+    val alertaSaludInfo: com.knexus.ergohabit.features.tareas.domain.entities.AlertaSalud? = null
 )

@@ -1,6 +1,7 @@
 package com.knexus.ergohabit.core.di
 
 import com.knexus.ergohabit.core.session.SessionManager
+import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -45,9 +46,15 @@ object ModuloRed {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.14.0.39:8080/")
+            .baseUrl("http://192.168.1.79:8080/") // Cambia a 10.0.2.2 si usas emulador
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideHabitosApi(retrofit: Retrofit): HabitosApi {
+        return retrofit.create(HabitosApi::class.java)
     }
 }

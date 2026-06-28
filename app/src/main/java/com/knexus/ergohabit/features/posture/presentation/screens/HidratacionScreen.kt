@@ -150,7 +150,7 @@ fun HidratacionScreen(
                         color = Color.White
                     )
                     Text(
-                        text = "de ${state.mlObjetivo} ml objetivo diario (${state.vasosActuales} vasos)",
+                        text = "de ${state.mlObjetivo} ml objetivo diario (${state.vasosObjetivo} vasos)",
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.85f),
                         textAlign = TextAlign.Center,
@@ -172,7 +172,7 @@ fun HidratacionScreen(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "${(state.porcentaje * 100).toInt()}%",
+                            text = "${state.porcentajeTexto}%",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -180,7 +180,11 @@ fun HidratacionScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Te faltan ${state.mlRestantes} ml (≈${state.vasosRestantes} vasos)",
+                        text = if (state.metaCumplida) {
+                            "¡Meta diaria cumplida! (${state.mlActuales} ml registrados)"
+                        } else {
+                            "Te faltan ${state.mlRestantes} ml (≈${state.vasosRestantes} vasos)"
+                        },
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.8f),
                         textAlign = TextAlign.Center
@@ -239,9 +243,9 @@ fun HidratacionScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        BotonAgua(emoji = "1",  etiqueta = "250ml",  subEtiqueta = "1 vaso",  modifier = Modifier.weight(1f)) { viewModel.agregarAgua(250) }
-                        BotonAgua(emoji = "2",  etiqueta = "500ml",  subEtiqueta = "2 vasos", modifier = Modifier.weight(1f)) { viewModel.agregarAgua(500) }
-                        BotonAgua(emoji = "1L", etiqueta = "1000ml", subEtiqueta = "Botella", modifier = Modifier.weight(1f)) { viewModel.agregarAgua(1000) }
+                        BotonAgua(emoji = "1",  etiqueta = "250ml",  subEtiqueta = "1 vaso",  modifier = Modifier.weight(1f)) { if (!state.isRegistrando) viewModel.agregarAgua(250) }
+                        BotonAgua(emoji = "2",  etiqueta = "500ml",  subEtiqueta = "2 vasos", modifier = Modifier.weight(1f)) { if (!state.isRegistrando) viewModel.agregarAgua(500) }
+                        BotonAgua(emoji = "1L", etiqueta = "1000ml", subEtiqueta = "Botella", modifier = Modifier.weight(1f)) { if (!state.isRegistrando) viewModel.agregarAgua(1000) }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(

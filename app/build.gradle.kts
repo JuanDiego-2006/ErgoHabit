@@ -81,4 +81,9 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
+
+    // CameraX + ML Kit detección facial
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("com.google.mlkit:face-detection:16.1.7")
 }

@@ -169,7 +169,13 @@ fun NutricionScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Te faltan ${state.comidasRestantes} comida",
+                        text = state.mensajeFaltante.ifBlank {
+                            when (state.comidasRestantes) {
+                                0 -> "¡Meta cumplida de hoy!"
+                                1 -> "Te falta 1 comida"
+                                else -> "Te faltan ${state.comidasRestantes} comidas"
+                            }
+                        },
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.85f)
                     )
@@ -254,7 +260,7 @@ fun NutricionScreen(
                             color = TextPrimary
                         )
                         Text(
-                            text = "Desayuno: 08:00 • Comida: 14:00 • Cena: 20:00",
+                            text = "Desayuno: ${state.horaDesayuno} • Comida: ${state.horaComida} • Cena: ${state.horaCena}",
                             fontSize = 11.sp,
                             color = TextSecondary,
                             lineHeight = 16.sp

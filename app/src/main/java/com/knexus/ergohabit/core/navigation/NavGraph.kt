@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.knexus.ergohabit.core.session.SessionManager
 import com.knexus.ergohabit.features.auth.presentation.screens.LoginScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.ActividadScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.ConfigHorarioScreen
@@ -21,10 +22,15 @@ import com.knexus.ergohabit.features.perfil.presentation.screens.PerfilScreen
 import com.knexus.ergohabit.features.tareas.presentation.screens.TareaScreen
 
 @Composable
-fun GrafoNavegacion(navController: NavHostController) {
+fun GrafoNavegacion(
+    navController: NavHostController,
+    sessionManager: SessionManager
+) {
+    val estaLogueado = sessionManager.fetchAuthToken() != null
+
     NavHost(
         navController = navController,
-        startDestination = NavRuta.Login
+        startDestination = if (estaLogueado) NavRuta.Inicio else NavRuta.Login
     ) {
         // ... (otros composables)
         composable<NavRuta.Login> {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -17,11 +18,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.progreso.domain.entities.DetalleHabito
@@ -37,6 +41,17 @@ fun ProgresoScreen(
     viewModel: ProgresoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refrescarProgreso()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         containerColor = BgMain,
@@ -104,23 +119,23 @@ fun ProgresoScreen(
 
 @Composable
 fun HabitosGrid(habitos: List<HabitoProgreso>, onHabitoClick: (HabitoProgreso) -> Unit) {
-    val displayHabitos = if (habitos.isEmpty()) {
-        listOf(
-            HabitoProgreso(1, "Sueño", "🌙", "#7C6FF7", 75),
-            HabitoProgreso(2, "Agua", "💧", "#29B6F6", 60),
-            HabitoProgreso(3, "Ejercicio", "🏃", "#34C97A", 40),
-            HabitoProgreso(4, "Postura", "🧘", "#2E7D52", 90)
+    if (habitos.isEmpty()) {
+        Text(
+            text = "No hay datos de progreso disponibles.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextGray
         )
-    } else habitos
+        return
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            HabitoCard(displayHabitos[0], Modifier.weight(1f)) { onHabitoClick(displayHabitos[0]) }
-            HabitoCard(displayHabitos[1], Modifier.weight(1f)) { onHabitoClick(displayHabitos[1]) }
+            HabitoCard(habitos[0], Modifier.weight(1f)) { onHabitoClick(habitos[0]) }
+            HabitoCard(habitos[1], Modifier.weight(1f)) { onHabitoClick(habitos[1]) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            HabitoCard(displayHabitos[2], Modifier.weight(1f)) { onHabitoClick(displayHabitos[2]) }
-            HabitoCard(displayHabitos[3], Modifier.weight(1f)) { onHabitoClick(displayHabitos[3]) }
+            HabitoCard(habitos[2], Modifier.weight(1f)) { onHabitoClick(habitos[2]) }
+            HabitoCard(habitos[3], Modifier.weight(1f)) { onHabitoClick(habitos[3]) }
         }
     }
 }
@@ -388,11 +403,16 @@ fun TendenciaGeneralCard(porcentaje: String, tendencia: List<ProgresoDia>) {
 
 @Composable
 fun BarChart(data: List<ProgresoDia>) {
-    val displayData = if (data.isEmpty()) {
-        List(21) { i -> 
-            ProgresoDia(i + 1, (0.3f + (Math.random() * 0.7f)).toFloat())
-        }
-    } else data
+    if (data.isEmpty()) {
+        Text(
+            text = "Sin datos de tendencia semanal.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextGray,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+        return
+    }
 
     Column {
         Row(
@@ -402,7 +422,7 @@ fun BarChart(data: List<ProgresoDia>) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            displayData.forEach { dia ->
+            data.forEach { dia ->
                 Box(
                     modifier = Modifier
                         .weight(1f)

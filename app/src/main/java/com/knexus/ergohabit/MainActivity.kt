@@ -1,48 +1,114 @@
 package com.knexus.ergohabit
 
 import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
 import com.knexus.ergohabit.core.navigation.GrafoNavegacion
+import com.knexus.ergohabit.core.session.SessionManager
+import com.knexus.ergohabit.features.posture.domain.GestorMonitoreoPostura
+import com.knexus.ergohabit.features.posture.presentation.components.CamaraPosturaMonitor
 import com.knexus.ergohabit.ui.theme.ErgoHabitTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject
+    lateinit var sessionManager: SessionManager
+
+    @Inject
+    lateinit var gestorMonitoreo: GestorMonitoreoPostura
+
+    private val permisoCamaraState = mutableStateOf(false)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     private val lanzadorPermisos = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permisos ->
-        if (permisos.all { it.value }) {
-            println("ErgoHabit: Todos los permisos concedidos.")
-        }
+    ) {
+        permisoCamaraState.value = tienePermisoCamara()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        permisoCamaraState.value = tienePermisoCamara()
 
+        setContent {
+            ErgoHabitTheme {
+                val context = LocalContext.current
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val monitoreo by gestorMonitoreo.estado.collectAsState()
+                val tienePermisoCamara by permisoCamaraState
+
+                androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            permisoCamaraState.value = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                CamaraPosturaMonitor(
+                    activo = monitoreo.activo,
+                    tienePermisoCamara = tienePermisoCamara,
+                    lifecycleOwner = lifecycleOwner,
+                    onResultado = { gestorMonitoreo.actualizarCamara(it) },
+                    onCamaraInactiva = { gestorMonitoreo.marcarCamaraInactiva() }
+                )
+
+                val navController = rememberNavController()
+                GrafoNavegacion(
+                    navController = navController,
+                    sessionManager = sessionManager
+                )
+            }
+        }
+
+        window.decorView.post { solicitarPermisosEnTiempoDeEjecucion() }
+    }
+
+    private fun tienePermisoCamara(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun solicitarPermisosEnTiempoDeEjecucion() {
         val permisosASolicitar = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permisosASolicitar.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            permisosASolicitar.add(Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permisosASolicitar.add(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
+        if (!tienePermisoCamara()) {
+            permisosASolicitar.add(Manifest.permission.CAMERA)
         }
         if (permisosASolicitar.isNotEmpty()) {
             lanzadorPermisos.launch(permisosASolicitar.toTypedArray())
-        }
-
-        setContent {
-            ErgoHabitTheme {
-                val navController = rememberNavController()
-                GrafoNavegacion(navController = navController)
-            }
         }
     }
 }

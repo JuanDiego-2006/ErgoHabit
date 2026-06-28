@@ -1,6 +1,7 @@
 package com.knexus.ergohabit.features.posture.di
 
 import com.knexus.ergohabit.features.posture.data.datasource.api.AuthApi
+import com.knexus.ergohabit.features.posture.data.datasource.api.PosturaApi
 import com.knexus.ergohabit.features.posture.data.mapper.PostureMapper
 import com.knexus.ergohabit.features.posture.data.repository.AuthRepositoryImpl
 import com.knexus.ergohabit.features.posture.data.repository.PostureRepositoryImpl
@@ -43,6 +44,11 @@ abstract class PostureModule {
         fun provideAuthApi(retrofit: Retrofit): AuthApi {
             return retrofit.create(AuthApi::class.java)
         }
-        // -------------------------------------------------------------------------------
+
+        @Provides
+        @Singleton
+        fun providePosturaApi(retrofit: Retrofit): PosturaApi {
+            return retrofit.create(PosturaApi::class.java)
+        }
     }
 }

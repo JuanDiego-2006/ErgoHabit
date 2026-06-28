@@ -1,14 +1,21 @@
 package com.knexus.ergohabit.features.posture.presentation.viewmodel
 
 data class SuenoUiState(
-    val horasDormidas: Float = 6.5f,
+    val horasDormidas: Float = 0f,
     val horasRecomendadas: Float = 8f,
-    val calidad: String = "Moderada",
-    val horaDormir: String = "22:00",
-    val horaDespertar: String = "06:00",
-    val alarmaActivada: Boolean = true
+    val calidad: String = "—",
+    val horaDormir: String = "--:--",
+    val horaDespertar: String = "--:--",
+    val alarmaActivada: Boolean = false,
+    val fraseMotivacional: String = "",
+    val tips: List<String> = emptyList(),
+    val isLoading: Boolean = true
 ) {
-    val porcentaje: Float get() = (horasDormidas / horasRecomendadas).coerceIn(0f, 1f)
-    val horasPlanificadas: Float get() = 8.0f
-    val cumpleRecomendacion: Boolean get() = horasPlanificadas >= horasRecomendadas
+    val porcentaje: Float get() = if (horasRecomendadas > 0) {
+        (horasDormidas / horasRecomendadas).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val horasPlanificadas: Float get() = horasRecomendadas
+    val cumpleRecomendacion: Boolean get() = horasDormidas >= horasRecomendadas
 }

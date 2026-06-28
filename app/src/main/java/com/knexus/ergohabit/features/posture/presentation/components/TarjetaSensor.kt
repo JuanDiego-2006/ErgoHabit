@@ -23,21 +23,27 @@ import com.knexus.ergohabit.ui.theme.*
 fun TarjetaSensor(
     isSensorActive: Boolean,
     gradosInclinacion: Int,
+    esCorrectaGlobal: Boolean = true,
+    mensajeCamara: String = "",
+    alertaPorCamara: Boolean = false,
+    camaraActiva: Boolean = false,
     onToggleClick: () -> Unit
 ) {
     val colorCirculo = if (isSensorActive) GreenPrimary else Color.Gray
 
-    // Estados actualizados al nuevo límite de 25 grados
     val estadoTexto = when {
         !isSensorActive            -> "Inactivo"
+        alertaPorCamara            -> "CÁMARA"
+        !esCorrectaGlobal          -> if (gradosInclinacion <= 40) "ADVERTENCIA" else "CRÍTICO"
         gradosInclinacion <= 25    -> "CORRECTO"
         gradosInclinacion <= 40    -> "ADVERTENCIA"
         else                       -> "CRÍTICO"
     }
 
-    // Colores actualizados al nuevo límite de 25 grados
     val colorEstado = when {
         !isSensorActive            -> Color.Gray
+        alertaPorCamara            -> RedCritical
+        !esCorrectaGlobal          -> if (gradosInclinacion <= 40) OrangeAccent else RedCritical
         gradosInclinacion <= 25    -> GreenPrimary
         gradosInclinacion <= 40    -> OrangeAccent
         else                       -> RedCritical
@@ -88,10 +94,18 @@ fun TarjetaSensor(
                         color = TextPrimary
                     )
                     Text(
-                        text = if (isSensorActive)
-                            "• Tiempo real | ${if (gradosInclinacion <= 25) "Postura OK" else "Corrige tu postura"}"
-                        else
-                            "• Toca la tarjeta para activar",
+                        text = if (isSensorActive) {
+                            when {
+                                alertaPorCamara -> "• Cámara: $mensajeCamara"
+                                camaraActiva && mensajeCamara.isNotBlank() ->
+                                    "• Sensor + rostro | $mensajeCamara"
+                                !esCorrectaGlobal -> "• Tiempo real | Corrige tu postura"
+                                gradosInclinacion <= 25 -> "• Tiempo real | Postura OK"
+                                else -> "• Tiempo real | Corrige tu postura"
+                            }
+                        } else {
+                            "• Toca la tarjeta para activar"
+                        },
                         fontSize = 12.sp,
                         color = if (isSensorActive) colorEstado else Color.Gray,
                         modifier = Modifier.padding(top = 2.dp)

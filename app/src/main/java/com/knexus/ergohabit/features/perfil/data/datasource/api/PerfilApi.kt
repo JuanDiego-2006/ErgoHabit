@@ -5,6 +5,6 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface PerfilApi {
-    @GET("usuarios/{id}")
+    @GET("api/v1/usuarios/{id}")
     suspend fun getPerfil(@Path("id") idUsuario: Int): UsuarioPerfil
 }

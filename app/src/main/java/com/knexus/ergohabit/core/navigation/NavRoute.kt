@@ -16,7 +16,6 @@ sealed class NavRuta {
     @Serializable data object Nutricion : NavRuta()
     @Serializable data object ConfigNutricion : NavRuta()
     @Serializable data class Tareas(val mostrarCompletado: Boolean = false) : NavRuta()
-    @Serializable data object Sensores : NavRuta()
     @Serializable data object Progreso : NavRuta()
     @Serializable data object Perfil : NavRuta()
 }
