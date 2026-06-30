@@ -71,7 +71,7 @@ fun SheetMasTiempo(
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(BgMain)
-                    .clickable { if (minutosExtra > 5) minutosExtra -= 5 },
+                    .clickable { if (minutosExtra > 15) minutosExtra -= 15 }, // Cambiado a saltos de 15 min para facilitar horas
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Remove, contentDescription = null, tint = TextGray)
@@ -79,16 +79,27 @@ fun SheetMasTiempo(
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 40.dp)
+                modifier = Modifier.padding(horizontal = 24.dp)
             ) {
+                val hrs = minutosExtra / 60
+                val mins = minutosExtra % 60
+                
                 Text(
-                    text = "$minutosExtra",
+                    text = when {
+                        hrs > 0 && mins > 0 -> "$hrs hr $mins"
+                        hrs > 0 -> "$hrs"
+                        else -> "$minutosExtra"
+                    },
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
                 Text(
-                    text = "minutos adicionales",
+                    text = when {
+                        hrs > 0 && mins > 0 -> "horas y minutos"
+                        hrs > 0 -> if (hrs == 1) "hora adicional" else "horas adicionales"
+                        else -> "minutos adicionales"
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = TextGray
                 )
@@ -99,7 +110,7 @@ fun SheetMasTiempo(
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(BgMain)
-                    .clickable { if (minutosExtra < 120) minutosExtra += 5 },
+                    .clickable { if (minutosExtra < 120) minutosExtra += 15 }, // Saltos de 15 min
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, tint = TextGray)
@@ -155,7 +166,14 @@ fun SheetMasTiempo(
                 colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("✓ Agregar $minutosExtra min", color = Color.White, fontWeight = FontWeight.Bold)
+                val hrs = minutosExtra / 60
+                val mins = minutosExtra % 60
+                val textoBoton = when {
+                    hrs > 0 && mins > 0 -> "$hrs hr $mins min"
+                    hrs > 0 -> "$hrs hr"
+                    else -> "$minutosExtra min"
+                }
+                Text("✓ Agregar $textoBoton", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }

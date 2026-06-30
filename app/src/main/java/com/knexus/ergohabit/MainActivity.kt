@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 // --- MANEJO GLOBAL DE REDIRECCIÓN POR NOTIFICACIONES ---
                 LaunchedEffect(currentIntent) {
                     val intent = currentIntent
-                    if (intent != null && (intent.hasExtra("frase") || intent.hasExtra("tareaCompletadaId"))) {
+                    if (intent != null && (intent.hasExtra("frase") || intent.hasExtra("tareaCompletadaId") || intent.hasExtra("idTareaAlerta"))) {
                         // Si el usuario está logueado, lo mandamos a Tareas
                         if (sessionManager.fetchAuthToken() != null) {
                             navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Tareas()) {
@@ -75,7 +75,8 @@ class MainActivity : ComponentActivity() {
 
                 GrafoNavegacion(
                     navController = navController,
-                    sessionManager = sessionManager
+                    sessionManager = sessionManager,
+                    notificationIntent = currentIntent
                 )
             }
         }

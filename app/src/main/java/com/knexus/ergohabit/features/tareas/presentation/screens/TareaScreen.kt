@@ -30,23 +30,29 @@ import com.knexus.ergohabit.ui.theme.*
 fun TareaScreen(
     navController: NavHostController,
     viewModel: TareaViewModel = hiltViewModel(),
-    mostrarCompletadoInicial: Boolean = false
+    mostrarCompletadoInicial: Boolean = false,
+    notificationIntent: android.content.Intent? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
-    // --- MANEJO DE INTENT DE NOTIFICACIÓN (CORREGIDO PARA RE-ENTRADA) ---
-    val activity = context as? android.app.Activity
-    LaunchedEffect(activity?.intent) {
-        activity?.intent?.let { intent ->
+    // --- MANEJO DE INTENT DE NOTIFICACIÓN ---
+    LaunchedEffect(notificationIntent) {
+        notificationIntent?.let { intent ->
             val frase = intent.getStringExtra("frase")
             val accion = intent.getStringExtra("accion")
+            val idTareaAlerta = intent.getIntExtra("idTareaAlerta", -1)
             val tareaCompletadaId = intent.getIntExtra("tareaCompletadaId", -1)
 
-            if (frase != null && accion != null) {
-                viewModel.mostrarAlertaDesdeNotificacion(frase, accion)
+            if (idTareaAlerta != -1) {
+                // Prioridad a la alerta de salud
+                viewModel.mostrarAlertaDesdeNotificacion(
+                    frase ?: "¡Momento de salud! 🧘", 
+                    accion ?: "Es hora de estirar", 
+                    idTareaAlerta
+                )
+                intent.removeExtra("idTareaAlerta")
                 intent.removeExtra("frase")
                 intent.removeExtra("accion")
             } else if (tareaCompletadaId != -1) {
@@ -185,7 +191,7 @@ fun TareaScreen(
 
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 uiState.tareasEstado?.pendientes?.let { pendientes ->
-                    items(pendientes) { tarea ->
+                    items(pendientes, key = { it.id }) { tarea ->
                         ItemTarea(
                             tarea = tarea, 
                             isSelected = uiState.tareaSeleccionada?.id == tarea.id, 
@@ -194,13 +200,13 @@ fun TareaScreen(
                         )
                     }
                 }
-                item {
+                item(key = "spacer_completadas") {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(text = uiState.tareasEstado?.totalCompletadasText ?: "", style = MaterialTheme.typography.labelMedium, color = TextGray, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 uiState.tareasEstado?.completadas?.let { completadas ->
-                    items(completadas) { tarea ->
+                    items(completadas, key = { it.id }) { tarea ->
                         ItemTarea(
                             tarea = tarea, 
                             isSelected = uiState.tareaSeleccionada?.id == tarea.id, 

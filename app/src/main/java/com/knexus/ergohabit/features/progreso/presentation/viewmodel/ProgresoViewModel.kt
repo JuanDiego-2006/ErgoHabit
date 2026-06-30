@@ -33,9 +33,15 @@ class ProgresoViewModel @Inject constructor(
     }
 
     fun seleccionarHabito(idHabito: Int) {
+        if (_uiState.value.idHabitoSeleccionado == idHabito) {
+            // TOGGLE: Si ya está seleccionado, lo ocultamos
+            _uiState.update { it.copy(idHabitoSeleccionado = null, detalleHabito = null) }
+            return
+        }
+
         val idUsuario = sessionManager.fetchUserId()
         viewModelScope.launch {
-            _uiState.update { it.copy(idHabitoSeleccionado = idHabito, isLoading = true) }
+            _uiState.update { it.copy(idHabitoSeleccionado = idHabito, detalleHabito = null, isLoading = true) }
             getDetalleHabitoUseCase(idUsuario, idHabito).collect { result ->
                 result.onSuccess { detalle ->
                     _uiState.update { it.copy(detalleHabito = detalle, isLoading = false) }

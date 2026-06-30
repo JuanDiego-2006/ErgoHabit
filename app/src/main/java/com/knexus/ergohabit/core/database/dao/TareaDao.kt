@@ -20,4 +20,7 @@ interface TareaDao {
 
     @Query("DELETE FROM tareas")
     suspend fun clearTareas()
+
+    @Query("UPDATE tareas SET idEstado = :idEstado, fechaInicioCronometro = :fecha WHERE id = :idTarea")
+    suspend fun updateTareaEstado(idTarea: Int, idEstado: Int, fecha: String?)
 }

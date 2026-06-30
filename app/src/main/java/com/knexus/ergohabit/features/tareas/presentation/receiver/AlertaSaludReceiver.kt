@@ -25,6 +25,9 @@ class AlertaSaludReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var getAlertaSaludUseCase: GetAlertaSaludUseCase
+    
+    @Inject
+    lateinit var pausarTareaUseCase: com.knexus.ergohabit.features.tareas.domain.usecases.PausarTareaUseCase
 
     override fun onReceive(context: Context, intent: Intent) {
         val idTarea = intent.getIntExtra("idTarea", -1)
@@ -35,13 +38,11 @@ class AlertaSaludReceiver : BroadcastReceiver() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Alertas de Salud y Bienestar",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
+            val name = if (esFinDeTarea) "Fin de Tareas" else "Alertas de Salud"
+            val channel = NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Notificaciones para descansos y fin de tareas"
                 enableVibration(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -67,37 +68,41 @@ class AlertaSaludReceiver : BroadcastReceiver() {
             return
         }
 
-        // --- FLUJO: CORRECCIÓN PARA ALERTA DE SALUD (30 MIN) ---
-        // 1. Mostrar notificación de aviso inmediato
+        // 1. Mostrar notificación de aviso inmediato (LO PRIMERO)
+        val activityIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("idTareaAlerta", idTarea)
+        }
+        val pendingIntent = PendingIntent.getActivity(context, idTarea, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("¡Momento de Salud! 🧘")
             .setContentText("Es hora de revisar tu postura y estirar.")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(true)
+            .setOngoing(true) // Para que no se borre sin querer hasta tener la info
+            .setContentIntent(pendingIntent)
 
         notificationManager.notify(idTarea, builder.build())
 
-        // 2. Actualizar con info real de la API
+        // 2. Mandar a pausar y traer info real en segundo plano
+        val result = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
-            getAlertaSaludUseCase(idTarea).onSuccess { info ->
-                val activityIntent = Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra("frase", info.frase)
-                    putExtra("accion", info.accion)
+            try {
+                pausarTareaUseCase(idTarea)
+                getAlertaSaludUseCase(idTarea).onSuccess { info ->
+                    activityIntent.putExtra("frase", info.frase)
+                    activityIntent.putExtra("accion", info.accion)
+                    val updatedPendingIntent = PendingIntent.getActivity(context, idTarea, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                    builder.setContentText(info.frase)
+                           .setContentIntent(updatedPendingIntent)
+                           .setOngoing(false)
+                    notificationManager.notify(idTarea, builder.build())
                 }
-
-                val pendingIntent = PendingIntent.getActivity(context, idTarea, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-                builder.setContentText(info.frase)
-                       .setContentIntent(pendingIntent)
-                
-                notificationManager.notify(idTarea, builder.build())
-                
-                // Programar la siguiente
+            } finally {
                 programarSiguienteAlerta(context, idTarea)
-            }.onFailure {
-                programarSiguienteAlerta(context, idTarea)
+                result.finish()
             }
         }
     }
@@ -109,7 +114,7 @@ class AlertaSaludReceiver : BroadcastReceiver() {
             putExtra("esFinDeTarea", false)
         }
         val pendingIntent = PendingIntent.getBroadcast(context, idTarea, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val triggerTime = System.currentTimeMillis() + (30 * 60 * 1000)
+        val triggerTime = System.currentTimeMillis() + (30 * 60 * 1000) // 30 minutos reales
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)

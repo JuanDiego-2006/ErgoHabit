@@ -71,6 +71,13 @@ class TareaRepositoryImpl @Inject constructor(
 
     override suspend fun iniciarTarea(idTarea: Int): Result<String> {
         return try {
+            // Actualización optimista local compatible con API 24+
+            val now = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }.format(java.util.Date())
+            
+            daoTarea.updateTareaEstado(idTarea, 3, now)
+            
             val response = api.iniciarTarea(idTarea)
             Result.success(response.mensaje ?: "Cronómetro iniciado")
         } catch (e: Exception) {
@@ -80,6 +87,8 @@ class TareaRepositoryImpl @Inject constructor(
 
     override suspend fun pausarTarea(idTarea: Int): Result<String> {
         return try {
+            // Actualización optimista local
+            daoTarea.updateTareaEstado(idTarea, 1, null)
             val response = api.pausarTarea(idTarea)
             Result.success(response.mensaje ?: "Cronómetro pausado")
         } catch (e: Exception) {

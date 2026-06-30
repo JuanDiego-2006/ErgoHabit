@@ -71,6 +71,7 @@ fun ProgresoScreen(
             // Grid de Hábitos (Progreso de la semana)
             HabitosGrid(
                 habitos = uiState.habitos,
+                idHabitoSeleccionado = uiState.idHabitoSeleccionado,
                 onHabitoClick = { viewModel.seleccionarHabito(it.id) }
             )
 
@@ -146,30 +147,43 @@ fun FraseDelDiaCard(frase: com.knexus.ergohabit.features.progreso.domain.entitie
 }
 
 @Composable
-fun HabitosGrid(habitos: List<HabitoProgreso>, onHabitoClick: (HabitoProgreso) -> Unit) {
-    val displayHabitos = if (habitos.isEmpty()) {
-        listOf(
-            HabitoProgreso(1, "Sueño", "🌙", "#7C6FF7", 75),
-            HabitoProgreso(2, "Agua", "💧", "#29B6F6", 60),
-            HabitoProgreso(3, "Ejercicio", "🏃", "#34C97A", 40),
-            HabitoProgreso(4, "Postura", "🧘", "#2E7D52", 90)
-        )
-    } else habitos
+fun HabitosGrid(habitos: List<HabitoProgreso>, idHabitoSeleccionado: Int?, onHabitoClick: (HabitoProgreso) -> Unit) {
+    // Definimos los 4 hábitos base con sus iconos y colores protegidos
+    val baseHabitos = listOf(
+        HabitoProgreso(1, "Sueño", "🌙", "#7C6FF7", 0),
+        HabitoProgreso(2, "Agua", "💧", "#29B6F6", 0),
+        HabitoProgreso(3, "Ejercicio", "🏃", "#34C97A", 0),
+        HabitoProgreso(4, "Postura", "🧘", "#2E7D52", 0)
+    )
+
+    // Combinamos con los datos reales pero protegemos Icono y Color
+    val displayHabitos = baseHabitos.map { base ->
+        val real = habitos.find { it.id == base.id }
+        if (real != null) {
+            // Si existe el dato real, lo usamos pero nos aseguramos que el icono y color no sean basura
+            real.copy(
+                icono = if (real.icono.isBlank()) base.icono else real.icono,
+                colorHex = if (real.colorHex.isBlank() || !real.colorHex.startsWith("#")) base.colorHex else real.colorHex
+            )
+        } else {
+            base
+        }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            HabitoCard(displayHabitos[0], Modifier.weight(1f)) { onHabitoClick(displayHabitos[0]) }
-            HabitoCard(displayHabitos[1], Modifier.weight(1f)) { onHabitoClick(displayHabitos[1]) }
+            HabitoCard(displayHabitos[0], idHabitoSeleccionado == displayHabitos[0].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[0]) }
+            HabitoCard(displayHabitos[1], idHabitoSeleccionado == displayHabitos[1].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[1]) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            HabitoCard(displayHabitos[2], Modifier.weight(1f)) { onHabitoClick(displayHabitos[2]) }
-            HabitoCard(displayHabitos[3], Modifier.weight(1f)) { onHabitoClick(displayHabitos[3]) }
+            HabitoCard(displayHabitos[2], idHabitoSeleccionado == displayHabitos[2].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[2]) }
+            HabitoCard(displayHabitos[3], idHabitoSeleccionado == displayHabitos[3].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[3]) }
         }
     }
 }
 
 @Composable
-fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun HabitoCard(habito: HabitoProgreso, isSelected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val baseColor = try {
         Color(android.graphics.Color.parseColor(habito.colorHex))
     } catch (e: Exception) {
@@ -178,9 +192,12 @@ fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: (
     
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = baseColor.copy(alpha = 0.1f)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) baseColor.copy(alpha = 0.2f) else baseColor.copy(alpha = 0.1f)
+        ),
         shape = RoundedCornerShape(24.dp),
-        modifier = modifier.height(140.dp)
+        modifier = modifier.height(140.dp),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, baseColor) else null
     ) {
         Column(
             modifier = Modifier
@@ -212,9 +229,12 @@ fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: (
 
 @Composable
 fun DetalleHabitoCard(detalle: DetalleHabito) {
-    // --- CORRECCIÓN: Usar el título tal cual viene de la API para no repetir "ÚLTIMOS 7 DÍAS" ---
-    val tituloGrafica = detalle.titulo.uppercase()
-    // ------------------------------------------------------------------------------------------
+    // Título dinámico: Especial para postura o el que venga de la API para los demás
+    val tituloGrafica = if (detalle.idHabito == 4) {
+        "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
+    } else {
+        detalle.titulo.uppercase()
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
