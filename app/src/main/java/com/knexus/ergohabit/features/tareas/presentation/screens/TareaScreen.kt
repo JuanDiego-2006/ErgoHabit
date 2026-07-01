@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,22 +30,35 @@ import com.knexus.ergohabit.ui.theme.*
 fun TareaScreen(
     navController: NavHostController,
     viewModel: TareaViewModel = hiltViewModel(),
-    mostrarCompletadoInicial: Boolean = false
+    mostrarCompletadoInicial: Boolean = false,
+    notificationIntent: android.content.Intent? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     // --- MANEJO DE INTENT DE NOTIFICACIÓN ---
-    LaunchedEffect(Unit) {
-        val intent = (context as? android.app.Activity)?.intent
-        val frase = intent?.getStringExtra("frase")
-        val accion = intent?.getStringExtra("accion")
-        if (frase != null && accion != null) {
-            viewModel.mostrarAlertaDesdeNotificacion(frase, accion)
-            intent.removeExtra("frase")
-            intent.removeExtra("accion")
+    LaunchedEffect(notificationIntent) {
+        notificationIntent?.let { intent ->
+            val frase = intent.getStringExtra("frase")
+            val accion = intent.getStringExtra("accion")
+            val idTareaAlerta = intent.getIntExtra("idTareaAlerta", -1)
+            val tareaCompletadaId = intent.getIntExtra("tareaCompletadaId", -1)
+
+            if (idTareaAlerta != -1) {
+                // Prioridad a la alerta de salud
+                viewModel.mostrarAlertaDesdeNotificacion(
+                    frase ?: "¡Momento de salud! 🧘",
+                    accion ?: "Es hora de estirar",
+                    idTareaAlerta
+                )
+                intent.removeExtra("idTareaAlerta")
+                intent.removeExtra("frase")
+                intent.removeExtra("accion")
+            } else if (tareaCompletadaId != -1) {
+                viewModel.prepararPantallaCompletado(tareaCompletadaId)
+                intent.removeExtra("tareaCompletadaId")
+            }
         }
     }
 
@@ -163,7 +177,7 @@ fun TareaScreen(
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
             // Header
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(text = "FOCO ACADÉMICO", style = MaterialTheme.typography.labelSmall, color = TextGray, letterSpacing = 1.sp)
                     Text(text = "Mis Tareas", style = MaterialTheme.typography.headlineMedium, color = TextPrimary, fontWeight = FontWeight.Bold)
                 }
@@ -177,25 +191,25 @@ fun TareaScreen(
 
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 uiState.tareasEstado?.pendientes?.let { pendientes ->
-                    items(pendientes) { tarea ->
+                    items(pendientes, key = { it.id }) { tarea ->
                         ItemTarea(
-                            tarea = tarea, 
-                            isSelected = uiState.tareaSeleccionada?.id == tarea.id, 
+                            tarea = tarea,
+                            isSelected = uiState.tareaSeleccionada?.id == tarea.id,
                             onClick = { viewModel.seleccionarTarea(tarea) },
                             onDeleteClick = { viewModel.eliminarTarea(tarea.id) }
                         )
                     }
                 }
-                item {
+                item(key = "spacer_completadas") {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(text = uiState.tareasEstado?.totalCompletadasText ?: "", style = MaterialTheme.typography.labelMedium, color = TextGray, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 uiState.tareasEstado?.completadas?.let { completadas ->
-                    items(completadas) { tarea ->
+                    items(completadas, key = { it.id }) { tarea ->
                         ItemTarea(
-                            tarea = tarea, 
-                            isSelected = uiState.tareaSeleccionada?.id == tarea.id, 
+                            tarea = tarea,
+                            isSelected = uiState.tareaSeleccionada?.id == tarea.id,
                             onClick = { viewModel.seleccionarTarea(tarea) },
                             onDeleteClick = { viewModel.eliminarTarea(tarea.id) }
                         )
@@ -203,7 +217,13 @@ fun TareaScreen(
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-            CronometroSeccion(tarea = uiState.tareaSeleccionada, tiempoRestante = uiState.tiempoRestante, isRunning = uiState.isTimerRunning, onToggleTimer = { viewModel.toggleTimer() })
+            CronometroSeccion(
+                tarea = uiState.tareaSeleccionada,
+                tiempoRestante = uiState.tiempoRestante,
+                duracionSesionActual = uiState.duracionSesionActual,
+                isRunning = uiState.isTimerRunning,
+                onToggleTimer = { viewModel.toggleTimer() }
+            )
         }
     }
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -18,14 +17,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.progreso.domain.entities.DetalleHabito
@@ -41,17 +37,6 @@ fun ProgresoScreen(
     viewModel: ProgresoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refrescarProgreso()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     Scaffold(
         containerColor = BgMain,
@@ -86,6 +71,7 @@ fun ProgresoScreen(
             // Grid de Hábitos (Progreso de la semana)
             HabitosGrid(
                 habitos = uiState.habitos,
+                idHabitoSeleccionado = uiState.idHabitoSeleccionado,
                 onHabitoClick = { viewModel.seleccionarHabito(it.id) }
             )
 
@@ -98,7 +84,7 @@ fun ProgresoScreen(
             }
 
             Text(
-                text = "CUMPLIMIENTO DE HÁBITOS · 21 DÍAS",
+                text = "FRASE DEL DÍA",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextGray,
                 letterSpacing = 1.sp
@@ -106,11 +92,8 @@ fun ProgresoScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tarjeta de Tendencia General (Cumplimiento de todos los hábitos)
-            TendenciaGeneralCard(
-                porcentaje = uiState.porcentajeTendencia,
-                tendencia = uiState.tendencia
-            )
+            // Nueva Tarjeta de Frase del Día
+            FraseDelDiaCard(uiState.frase)
             
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -118,30 +101,89 @@ fun ProgresoScreen(
 }
 
 @Composable
-fun HabitosGrid(habitos: List<HabitoProgreso>, onHabitoClick: (HabitoProgreso) -> Unit) {
-    if (habitos.isEmpty()) {
-        Text(
-            text = "No hay datos de progreso disponibles.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextGray
-        )
-        return
-    }
+fun FraseDelDiaCard(frase: com.knexus.ergohabit.features.progreso.domain.entities.Frase?) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFDFF1E1)), // Verde clarito como la imagen
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "INSPIRACIÓN DEL DÍA",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF5E9C76),
+                    fontWeight = FontWeight.Bold
+                )
+                Text(text = "\"", color = Color(0xFF5E9C76), fontSize = 24.sp)
+            }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            HabitoCard(habitos[0], Modifier.weight(1f)) { onHabitoClick(habitos[0]) }
-            HabitoCard(habitos[1], Modifier.weight(1f)) { onHabitoClick(habitos[1]) }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            HabitoCard(habitos[2], Modifier.weight(1f)) { onHabitoClick(habitos[2]) }
-            HabitoCard(habitos[3], Modifier.weight(1f)) { onHabitoClick(habitos[3]) }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = frase?.texto ?: "La constancia es la virtud por la que todas las otras virtudes dan fruto.",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E392A),
+                lineHeight = 28.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            HorizontalDivider(color = Color(0xFF5E9C76).copy(alpha = 0.2f))
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "ErgoHabit Team", // O podrías usar la categoría si el autor no viene
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF5E9C76),
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }
 
 @Composable
-fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun HabitosGrid(habitos: List<HabitoProgreso>, idHabitoSeleccionado: Int?, onHabitoClick: (HabitoProgreso) -> Unit) {
+    // Definimos los 4 hábitos base con sus iconos y colores protegidos
+    val baseHabitos = listOf(
+        HabitoProgreso(1, "Sueño", "🌙", "#7C6FF7", 0),
+        HabitoProgreso(2, "Agua", "💧", "#29B6F6", 0),
+        HabitoProgreso(3, "Ejercicio", "🏃", "#34C97A", 0),
+        HabitoProgreso(4, "Postura", "🧘", "#2E7D52", 0)
+    )
+
+    // Combinamos con los datos reales pero protegemos Icono y Color
+    val displayHabitos = baseHabitos.map { base ->
+        val real = habitos.find { it.id == base.id }
+        if (real != null) {
+            // Si existe el dato real, lo usamos pero nos aseguramos que el icono y color no sean basura
+            real.copy(
+                icono = if (real.icono.isBlank()) base.icono else real.icono,
+                colorHex = if (real.colorHex.isBlank() || !real.colorHex.startsWith("#")) base.colorHex else real.colorHex
+            )
+        } else {
+            base
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            HabitoCard(displayHabitos[0], idHabitoSeleccionado == displayHabitos[0].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[0]) }
+            HabitoCard(displayHabitos[1], idHabitoSeleccionado == displayHabitos[1].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[1]) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            HabitoCard(displayHabitos[2], idHabitoSeleccionado == displayHabitos[2].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[2]) }
+            HabitoCard(displayHabitos[3], idHabitoSeleccionado == displayHabitos[3].id, Modifier.weight(1f)) { onHabitoClick(displayHabitos[3]) }
+        }
+    }
+}
+
+@Composable
+fun HabitoCard(habito: HabitoProgreso, isSelected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val baseColor = try {
         Color(android.graphics.Color.parseColor(habito.colorHex))
     } catch (e: Exception) {
@@ -150,9 +192,12 @@ fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: (
     
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = baseColor.copy(alpha = 0.1f)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) baseColor.copy(alpha = 0.2f) else baseColor.copy(alpha = 0.1f)
+        ),
         shape = RoundedCornerShape(24.dp),
-        modifier = modifier.height(140.dp)
+        modifier = modifier.height(140.dp),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, baseColor) else null
     ) {
         Column(
             modifier = Modifier
@@ -184,11 +229,11 @@ fun HabitoCard(habito: HabitoProgreso, modifier: Modifier = Modifier, onClick: (
 
 @Composable
 fun DetalleHabitoCard(detalle: DetalleHabito) {
-    // Título dinámico
-    val tituloGrafica = when(detalle.idHabito) {
-        2 -> "HIDRATACIÓN (L) · ÚLTIMOS 7 DÍAS"
-        4 -> "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
-        else -> "${detalle.titulo.uppercase()} · ÚLTIMOS 7 DÍAS"
+    // Título dinámico: Especial para postura o el que venga de la API para los demás
+    val tituloGrafica = if (detalle.idHabito == 4) {
+        "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
+    } else {
+        detalle.titulo.uppercase()
     }
 
     Card(
@@ -281,7 +326,7 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
         4 -> "⚠️"
         else -> "h"
     }
-    
+
     // Calculamos el máximo para la escala visual
     val maxData = registros.maxOfOrNull { it.valor } ?: 0f
     val maxVisual = maxOf(if (idHabito == 4) 10f else meta, maxData) * 1.2f
@@ -295,10 +340,19 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
     ) {
         registros.forEach { registro ->
             val isHoy = registro.etiqueta == "Hoy"
-            // En postura todas las barras son rojas según la imagen
-            val barColor = if (idHabito == 4) Color(0xFFE54D4D) else {
-                if (registro.esMetaCumplida) Color(0xFF5CB38C) else Color(0xFFE54D4D)
+            
+            // --- CORRECCIÓN DE LÓGICA DE COLOR (Trust API) ---
+            val esFuturo = !isHoy && (registros.indexOf(registro) > registros.indexOf(registros.find { it.etiqueta == "Hoy" }))
+            
+            val barColor = when {
+                idHabito == 4 -> Color(0xFFE54D4D) // Postura siempre rojo
+                esFuturo -> Color.LightGray.copy(alpha = 0.3f) // Futuro en gris
+                registro.esMetaCumplida && registro.valor > 0 -> Color(0xFF5CB38C) // Verde si API dice cumplido
+                else -> Color(0xFFE54D4D) // Rojo si API dice no cumplido
             }
+            // --------------------------------------------------
+            // --------------------------------------
+
             val barHeightFraction = (registro.valor / maxVisual).coerceIn(0.1f, 0.95f)
 
             Column(
@@ -314,7 +368,7 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                     fontSize = 12.sp,
                     maxLines = 1
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Box(
@@ -354,96 +408,4 @@ fun CircleDot(color: Color) {
             .clip(CircleShape)
             .background(color)
     )
-}
-
-@Composable
-fun TendenciaGeneralCard(porcentaje: String, tendencia: List<ProgresoDia>) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Tendencia general",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = porcentaje,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            BarChart(tendencia)
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Días del experimento (día 1 – 21)",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextGray,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-        }
-    }
-}
-
-@Composable
-fun BarChart(data: List<ProgresoDia>) {
-    if (data.isEmpty()) {
-        Text(
-            text = "Sin datos de tendencia semanal.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextGray,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
-        return
-    }
-
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            data.forEach { dia ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(dia.valor)
-                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                        .background(GreenPrimary)
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("1", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("6", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("11", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("16", style = MaterialTheme.typography.labelSmall, color = TextGray)
-            Text("21", style = MaterialTheme.typography.labelSmall, color = TextGray)
-        }
-    }
 }

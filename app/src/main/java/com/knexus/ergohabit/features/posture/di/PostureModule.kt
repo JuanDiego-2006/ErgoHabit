@@ -31,7 +31,12 @@ abstract class PostureModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
-    // ----------------------------------------------------------------------
+
+    @Binds
+    @Singleton
+    abstract fun bindAguaRepository(
+        aguaRepositoryImpl: com.knexus.ergohabit.features.posture.data.repository.AguaRepositoryImpl
+    ): com.knexus.ergohabit.features.posture.domain.repository.AguaRepository
 
     companion object {
         @Provides
@@ -49,6 +54,12 @@ abstract class PostureModule {
         @Singleton
         fun providePosturaApi(retrofit: Retrofit): PosturaApi {
             return retrofit.create(PosturaApi::class.java)
+        }
+
+        @Provides
+        @Singleton
+        fun provideAguaApi(retrofit: Retrofit): com.knexus.ergohabit.features.posture.data.datasource.api.AguaApi {
+            return retrofit.create(com.knexus.ergohabit.features.posture.data.datasource.api.AguaApi::class.java)
         }
     }
 }

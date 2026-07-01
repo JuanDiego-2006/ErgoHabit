@@ -1,0 +1,12 @@
+package com.knexus.ergohabit.features.tareas.domain.usecases
+
+import com.knexus.ergohabit.features.tareas.domain.repositories.TareaRepository
+import javax.inject.Inject
+
+class ExtenderTareaUseCase @Inject constructor(
+    private val repository: TareaRepository
+) {
+    suspend operator fun invoke(idTarea: Int, minutos: Int): Result<String> {
+        return repository.extenderTarea(idTarea, minutos)
+    }
+}

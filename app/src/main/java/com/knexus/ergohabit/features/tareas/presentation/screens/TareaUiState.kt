@@ -12,6 +12,8 @@ data class TareaUiState(
     // Timer
     val tareaSeleccionada: TareaEnfoque? = null,
     val tiempoRestante: Int = 0, // En segundos
+    val duracionSesionActual: Int = 0, // Segundos totales de la sesión para la barra
+    val targetEndTimeMs: Long = -1L, // Hora exacta de finalización
     val isTimerRunning: Boolean = false,
     val mostrarRecordatorioEstiramiento: Boolean = false,
     
@@ -19,7 +21,7 @@ data class TareaUiState(
     val mostrarSheetNuevaTarea: Boolean = false,
     val nuevoTitulo: String = "",
     val nuevaCategoriaNombre: String = "Académica",
-    val nuevaDuracion: Int = 45, // Minutos
+    val nuevaDuracion: Int = 0, // Inicia en 0
     val mostrarSelectorDuracion: Boolean = false,
     val nuevaDuracionInput: String = "0000",
     

@@ -24,13 +24,14 @@ import com.knexus.ergohabit.features.tareas.presentation.screens.TareaScreen
 @Composable
 fun GrafoNavegacion(
     navController: NavHostController,
-    sessionManager: SessionManager
+    sessionManager: SessionManager,
+    notificationIntent: android.content.Intent? = null
 ) {
     val estaLogueado = sessionManager.fetchAuthToken() != null
 
     NavHost(
         navController = navController,
-        startDestination = if (estaLogueado) NavRuta.Inicio else NavRuta.Login
+        startDestination = NavRuta.Login
     ) {
         // ... (otros composables)
         composable<NavRuta.Login> {
@@ -127,7 +128,8 @@ fun GrafoNavegacion(
             val tareas: NavRuta.Tareas = backStackEntry.toRoute()
             TareaScreen(
                 navController = navController,
-                mostrarCompletadoInicial = tareas.mostrarCompletado
+                mostrarCompletadoInicial = tareas.mostrarCompletado,
+                notificationIntent = notificationIntent
             )
         }
 

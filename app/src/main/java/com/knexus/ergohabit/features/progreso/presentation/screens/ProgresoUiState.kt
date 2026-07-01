@@ -7,8 +7,7 @@ import com.knexus.ergohabit.features.progreso.domain.entities.ProgresoDia
 data class ProgresoUiState(
     val isLoading: Boolean = false,
     val habitos: List<HabitoProgreso> = emptyList(),
-    val tendencia: List<ProgresoDia> = emptyList(),
-    val porcentajeTendencia: String = "0%",
+    val frase: com.knexus.ergohabit.features.progreso.domain.entities.Frase? = null,
     val detalleHabito: DetalleHabito? = null,
     val idHabitoSeleccionado: Int? = null,
     val error: String? = null

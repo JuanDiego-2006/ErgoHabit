@@ -25,4 +25,10 @@ data class PosturaUiState(
     val rachaDias: Int = 0,
     val resumenHabitos: List<ResumenHabitoUi> = emptyList(),
     val cargandoDashboard: Boolean = true
+    val conteoVibraciones: Int = 0,
+
+    // --- NUEVO: Sincronización de Agua ---
+    val aguaPorcentaje: Int = 0,
+    val aguaMetaTexto: String = "Meta: --",
+    val nombreUsuario: String = "Usuario"
 )

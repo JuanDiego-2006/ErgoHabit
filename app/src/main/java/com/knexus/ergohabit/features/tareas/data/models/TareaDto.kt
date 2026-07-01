@@ -32,3 +32,7 @@ data class TareaCreateRequestDto(
     @SerializedName("categoria") val categoria: String,
     @SerializedName("duracionTarea") val duracionTarea: Int
 )
+
+data class TareaExtenderRequestDto(
+    @SerializedName("minutosExtra") val minutosExtra: Int
+)
