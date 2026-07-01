@@ -5,18 +5,6 @@ import com.knexus.ergohabit.features.posture.data.models.*
 import retrofit2.http.*
 
 interface HabitosApi {
-    // --- AGUA ---
-    @GET("api/v1/habitos/agua/dashboard")
-    suspend fun obtenerDashboardAgua(): HabitosDashboardAguaResponse
-
-    @GET("api/v1/habitos/agua/progreso-semanal")
-    suspend fun obtenerProgresoAgua(): HistorialHabitoResponse
-
-    @POST("api/v1/habitos/agua/toma")
-    suspend fun registrarTomaAgua(@Body request: RegistrarTomaRequest): MensajeResponse
-
-    @PUT("api/v1/habitos/agua/meta")
-    suspend fun configurarMetaAgua(@Body request: ConfigurarMetaAguaRequest): MensajeResponse
 
     // --- SUEÑO ---
     @GET("api/v1/habitos/sueno/dashboard")

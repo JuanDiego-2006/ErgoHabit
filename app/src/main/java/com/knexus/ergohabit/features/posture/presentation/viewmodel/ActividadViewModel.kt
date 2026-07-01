@@ -1,16 +1,20 @@
 package com.knexus.ergohabit.features.posture.presentation.viewmodel
 
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knexus.ergohabit.core.hardware.domain.SensorEjercicio
 import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
 import com.knexus.ergohabit.features.posture.data.models.RegistrarKmRequest
+import com.knexus.ergohabit.features.posture.domain.GestorEjercicio
+import com.knexus.ergohabit.features.posture.presentation.services.StepCounterService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,7 +22,9 @@ import javax.inject.Inject
 @HiltViewModel
 class ActividadViewModel @Inject constructor(
     private val api: HabitosApi,
-    private val sensorEjercicio: SensorEjercicio
+    private val sensorEjercicio: SensorEjercicio,
+    private val gestorEjercicio: GestorEjercicio,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ActividadUiState())
@@ -31,6 +37,25 @@ class ActividadViewModel @Inject constructor(
             it.copy(sensorDisponible = sensorEjercicio.estaDisponible())
         }
         cargarDashboard()
+        observarGestor()
+    }
+
+    private fun observarGestor() {
+        viewModelScope.launch {
+            gestorEjercicio.datosPasos.collect { datos ->
+                _uiState.update {
+                    it.copy(
+                        pasosSesion = datos.pasos,
+                        kmSesion = datos.km.toFloat()
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            gestorEjercicio.estaCorriendo.collect { activo ->
+                _uiState.update { it.copy(sensorActivo = activo) }
+            }
+        }
     }
 
     private fun cargarDashboard() {
@@ -71,42 +96,17 @@ class ActividadViewModel @Inject constructor(
             return
         }
 
-        sensorJob?.cancel()
-        sensorJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    sensorActivo = true,
-                    pasosSesion = 0,
-                    kmSesion = 0f,
-                    errorSensor = null
-                )
-            }
-
-            sensorEjercicio.iniciarMonitoreo()
-                .catch { error ->
-                    _uiState.update {
-                        it.copy(
-                            sensorActivo = false,
-                            errorSensor = error.message ?: "No se pudo iniciar el sensor."
-                        )
-                    }
-                }
-                .collect { datos ->
-                    _uiState.update {
-                        it.copy(
-                            pasosSesion = datos.pasos,
-                            kmSesion = datos.km.toFloat()
-                        )
-                    }
-                }
+        val intent = Intent(context, StepCounterService::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
         }
     }
 
     fun detenerSensor() {
-        sensorJob?.cancel()
-        sensorJob = null
-        sensorEjercicio.detenerMonitoreo()
-        _uiState.update { it.copy(sensorActivo = false) }
+        val intent = Intent(context, StepCounterService::class.java)
+        context.stopService(intent)
     }
 
     fun sincronizarSesion() {
@@ -115,11 +115,16 @@ class ActividadViewModel @Inject constructor(
             _uiState.update { it.copy(errorSensor = "Camina un poco más antes de guardar.") }
             return
         }
+        val estabaActivo = _uiState.value.sensorActivo
         registrarKm(km) {
-            _uiState.update { it.copy(pasosSesion = 0, kmSesion = 0f, errorSensor = null) }
-            if (_uiState.value.sensorActivo) {
-                reiniciarSensor()
+            if (estabaActivo) {
+                detenerSensor()
+                gestorEjercicio.reiniciar()
+                iniciarSensor()
+            } else {
+                gestorEjercicio.reiniciar()
             }
+            _uiState.update { it.copy(pasosSesion = 0, kmSesion = 0f, errorSensor = null) }
         }
     }
 
@@ -158,7 +163,6 @@ class ActividadViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        detenerSensor()
         super.onCleared()
     }
 

@@ -23,7 +23,7 @@ class NutricionViewModel @Inject constructor(
         cargarDashboard()
     }
 
-    private fun cargarDashboard() {
+    fun cargarDashboard() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             repository.getNutricionDashboard().collect { result ->

@@ -81,26 +81,33 @@ class NutricionReceiver : BroadcastReceiver() {
     }
 
     private fun programar(context: Context, am: AlarmManager, hora: String, tipo: String, code: Int) {
-        if (hora.isBlank() || hora == "00:00") return
-        val partes = hora.split(":")
-        val h = partes.getOrNull(0)?.toIntOrNull() ?: return
-        val m = partes.getOrNull(1)?.toIntOrNull() ?: return
+        if (hora.isBlank() || hora == "00:00" || hora == "--:--") return
+        try {
+            val partes = hora.split(":")
+            val h = partes[0].toInt()
+            val m = partes[1].take(2).toInt()
 
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, h)
-            set(Calendar.MINUTE, m)
-            set(Calendar.SECOND, 0)
-            add(Calendar.MINUTE, -10)
-            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
-        }
+            val cal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, h)
+                set(Calendar.MINUTE, m)
+                set(Calendar.SECOND, 0)
+                add(Calendar.MINUTE, -10)
+                // Si la hora ya pasó hoy, programar para mañana
+                if (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+            }
 
-        val intent = Intent(context, NutricionReceiver::class.java).apply { putExtra("tipoComida", tipo) }
-        val pi = PendingIntent.getBroadcast(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val intent = Intent(context, NutricionReceiver::class.java).apply { putExtra("tipoComida", tipo) }
+            val pi = PendingIntent.getBroadcast(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && am.canScheduleExactAlarms()) {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
-        } else {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && am.canScheduleExactAlarms()) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+            }
+        } catch (e: Exception) {
+            // Error al parsear la hora, ignoramos
         }
     }
 }

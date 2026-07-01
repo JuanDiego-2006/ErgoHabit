@@ -233,7 +233,7 @@ fun SuenoScreen(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(Icons.Outlined.Bedtime, contentDescription = null, tint = SuenoPurple1, modifier = Modifier.size(22.dp))
                                         Text("Dormir", fontSize = 11.sp, color = TextSecondary)
-                                        Text(state.horaDormir, fontSize = 26.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                                        Text(formatearParaDisplay(state.horaDormir), fontSize = 26.sp, fontWeight = FontWeight.Black, color = TextPrimary)
                                         Text("Recordatorio 5 min antes", fontSize = 10.sp, color = TextSecondary, textAlign = TextAlign.Center, lineHeight = 14.sp)
                                     }
                                 }
@@ -242,7 +242,7 @@ fun SuenoScreen(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(22.dp))
                                         Text("Despertar", fontSize = 11.sp, color = TextSecondary)
-                                        Text(state.horaDespertar, fontSize = 26.sp, fontWeight = FontWeight.Black, color = OrangeAccent)
+                                        Text(formatearParaDisplay(state.horaDespertar), fontSize = 26.sp, fontWeight = FontWeight.Black, color = OrangeAccent)
                                         Text(if (state.alarmaActivada) "🔔 Alarma activada" else "Sin alarma", fontSize = 10.sp, color = TextSecondary)
                                     }
                                 }
@@ -324,7 +324,7 @@ fun AlarmaSuenoOverlay(
             Spacer(modifier = Modifier.height(24.dp))
             Text("¡Es hora de despertar!", fontSize = 28.sp, fontWeight = FontWeight.Black, color = OrangeAccent, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = hora, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text(text = formatearParaDisplay(hora), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
             Spacer(modifier = Modifier.height(16.dp))
             Text("Buenos días! Tu jornada de estudio comienza ahora", fontSize = 15.sp, color = TextSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 20.dp))
             Spacer(modifier = Modifier.height(48.dp))
@@ -350,5 +350,13 @@ fun SuenoConsejoBullet(texto: String) {
         Text("●", fontSize = 10.sp, color = SuenoPurple1, modifier = Modifier.padding(top = 3.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Text(text = texto, fontSize = 13.sp, color = TextSecondary, lineHeight = 18.sp)
+    }
+}
+
+private fun formatearParaDisplay(horario: String): String {
+    return when {
+        horario == "00:00" || horario == "00:00 AM" -> "12:00 AM"
+        horario == "--:--" || horario.isBlank() -> "Sin establecer"
+        else -> horario
     }
 }

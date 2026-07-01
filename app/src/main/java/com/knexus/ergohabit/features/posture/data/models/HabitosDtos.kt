@@ -125,3 +125,9 @@ data class ElementoGraficaPosturaDto(
     @SerializedName("totalAlertas") val totalAlertas: Int,
     @SerializedName("esHoy") val esHoy: Boolean
 )
+
+data class ErrorResponseDto(
+    @SerializedName("code") val code: String,
+    @SerializedName("message") val message: String,
+    @SerializedName("details") val details: String?
+)

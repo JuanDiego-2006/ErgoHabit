@@ -2,17 +2,7 @@ package com.knexus.ergohabit.features.posture.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,11 +18,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.posture.presentation.viewmodel.NutricionViewModel
@@ -47,6 +41,7 @@ fun NutricionScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(state.error, state.successMessage) {
         state.error?.let {
@@ -57,6 +52,16 @@ fun NutricionScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessages()
         }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.cargarDashboard()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -218,6 +223,7 @@ fun NutricionScreen(
                         FilaComida(
                             emoji = "🥐",
                             nombre = "Desayuno",
+                            horario = state.horaDesayuno,
                             completada = state.desayunoCompletado,
                             onClick = { viewModel.marcarComida("DESAYUNO", !state.desayunoCompletado) }
                         )
@@ -225,6 +231,7 @@ fun NutricionScreen(
                         FilaComida(
                             emoji = "🍽️",
                             nombre = "Comida",
+                            horario = state.horaComida,
                             completada = state.comidaCompletada,
                             onClick = { viewModel.marcarComida("COMIDA", !state.comidaCompletada) }
                         )
@@ -232,6 +239,7 @@ fun NutricionScreen(
                         FilaComida(
                             emoji = "🌙",
                             nombre = "Cena",
+                            horario = state.horaCena,
                             completada = state.cenaCompletada,
                             onClick = { viewModel.marcarComida("CENA", !state.cenaCompletada) }
                         )
@@ -240,12 +248,12 @@ fun NutricionScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // ── CONFIGURAR HORARIOS ───────────────────────
+                // ── CONFIGURAR HORARIOS ──
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFFE8F5E9)) // Verde muy clarito como la imagen
+                        .background(Color(0xFFE3F2FD)) // Azul glacial suave
                         .clickable { onNavigateToConfigNutricion() }
                         .padding(16.dp)
                 ) {
@@ -253,18 +261,17 @@ fun NutricionScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Icono en círculo
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFD0E7D2)) // Fondo del círculo
+                                .background(Color(0xFFBBDEFB))
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Schedule,
                                 contentDescription = null,
-                                tint = Color(0xFF458C5E), // Verde del icono
+                                tint = Color(0xFF1976D2),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -276,19 +283,19 @@ fun NutricionScreen(
                                 text = "Configurar horarios",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0D47A1) // Azul oscuro como el título en la imagen
+                                color = Color(0xFF0D47A1)
                             )
                             Text(
-                                text = "Ajusta tus horarios de comida",
-                                fontSize = 12.sp,
-                                color = Color(0xFF90A4AE) // Gris azulado para el subtítulo
+                                text = "D: ${formatearParaDisplay(state.horaDesayuno)} • C: ${formatearParaDisplay(state.horaComida)} • Ce: ${formatearParaDisplay(state.horaCena)}",
+                                fontSize = 11.sp,
+                                color = Color(0xFF546E7A)
                             )
                         }
                         
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
                             contentDescription = null,
-                            tint = Color(0xFF458C5E),
+                            tint = Color(0xFF1976D2),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -319,12 +326,9 @@ fun NutricionScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         NutricionTipBullet("🥐 Desayuna antes de las 9 AM para activar tu metabolismo")
-                        Spacer(modifier = Modifier.height(10.dp))
-                        NutricionTipBullet("🍽️ Come entre 13:00-15:00 para mejor concentración en la tarde")
-                        Spacer(modifier = Modifier.height(10.dp))
+                        NutricionTipBullet("🍽️ Come entre 13:00-15:00 para mejor concentración")
                         NutricionTipBullet("🌙 Cena ligera 2-3 horas antes de dormir")
-                        Spacer(modifier = Modifier.height(10.dp))
-                        NutricionTipBullet("💚 Come a la misma hora todos los días para mejor rendimiento")
+                        NutricionTipBullet("💚 Come a la misma hora todos los días")
                     }
                 }
 
@@ -334,11 +338,11 @@ fun NutricionScreen(
     }
 }
 
-// ── COMPONENTE FILA COMIDA ────────────────────────────────
 @Composable
 fun FilaComida(
     emoji: String,
     nombre: String,
+    horario: String,
     completada: Boolean,
     onClick: () -> Unit = {}
 ) {
@@ -360,15 +364,11 @@ fun FilaComida(
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
-            Box(
-                modifier = Modifier
-                    .width(100.dp)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(
-                        if (completada) NutricionVerde.copy(alpha = 0.3f)
-                        else Color(0xFFE0E0E0)
-                    )
+            Text(
+                text = formatearParaDisplay(horario),
+                fontSize = 12.sp,
+                color = if (completada) NutricionVerde else Color.Gray,
+                fontWeight = FontWeight.Medium
             )
         }
         if (completada) {
@@ -382,22 +382,19 @@ fun FilaComida(
     }
 }
 
-// ── COMPONENTE TIP BULLET ─────────────────────────────────
+private fun formatearParaDisplay(horario: String): String {
+    return when {
+        horario == "00:00" || horario == "00:00 AM" -> "12:00 AM"
+        horario == "--:--" || horario.isBlank() -> "Sin establecer"
+        else -> horario
+    }
+}
+
 @Composable
 fun NutricionTipBullet(texto: String) {
-    Row(verticalAlignment = Alignment.Top) {
-        Text(
-            text = "●",
-            fontSize = 10.sp,
-            color = NutricionVerde,
-            modifier = Modifier.padding(top = 3.dp)
-        )
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+        Text("●", fontSize = 10.sp, color = NutricionVerde, modifier = Modifier.padding(top = 3.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = texto,
-            fontSize = 13.sp,
-            color = TextSecondary,
-            lineHeight = 18.sp
-        )
+        Text(text = texto, fontSize = 13.sp, color = TextSecondary, lineHeight = 18.sp)
     }
 }

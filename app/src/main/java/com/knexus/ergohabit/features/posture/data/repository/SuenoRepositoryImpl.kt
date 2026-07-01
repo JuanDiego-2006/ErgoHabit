@@ -1,8 +1,10 @@
 package com.knexus.ergohabit.features.posture.data.repository
 
+import com.google.gson.Gson
 import com.knexus.ergohabit.core.database.dao.SuenoDao
 import com.knexus.ergohabit.core.database.entities.SuenoEntity
 import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
+import com.knexus.ergohabit.features.posture.data.models.ErrorResponseDto
 import com.knexus.ergohabit.features.posture.data.models.SuenoRequest
 import com.knexus.ergohabit.features.posture.data.models.SuenoResponse
 import com.knexus.ergohabit.features.posture.domain.repository.SuenoRepository
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 import javax.inject.Inject
 
 class SuenoRepositoryImpl @Inject constructor(
@@ -17,8 +20,9 @@ class SuenoRepositoryImpl @Inject constructor(
     private val dao: SuenoDao
 ) : SuenoRepository {
 
+    private val gson = Gson()
+
     override fun getSuenoDashboard(): Flow<Result<SuenoResponse>> = flow {
-        // 1. Emitir lo que haya en Room primero (Caché Offline)
         val localFlow = dao.getSuenoDashboard().map { entity ->
             if (entity != null) {
                 Result.success(SuenoResponse(
@@ -34,10 +38,8 @@ class SuenoRepositoryImpl @Inject constructor(
             }
         }
 
-        // 2. Intentar actualizar desde la API
         try {
             val response = api.obtenerDashboardSueno()
-            // Guardar en Room para la próxima vez
             dao.insertSuenoDashboard(SuenoEntity(
                 horasPlanificadas = response.horasPlanificadas,
                 horasDormidasReales = response.horasDormidasReales,
@@ -49,7 +51,6 @@ class SuenoRepositoryImpl @Inject constructor(
             ))
             emit(Result.success(response))
         } catch (e: Exception) {
-            // Si falla la red, emitir lo que teníamos en Room (si había algo)
             emitAll(localFlow.map { it ?: Result.failure(e) })
         }
     }
@@ -59,7 +60,7 @@ class SuenoRepositoryImpl @Inject constructor(
             val response = api.registrarDespertarSueno()
             Result.success(response.mensaje)
         } catch (e: Exception) {
-            Result.failure(e)
+            parseError(e)
         }
     }
 
@@ -68,7 +69,18 @@ class SuenoRepositoryImpl @Inject constructor(
             val response = api.configurarHorarioSueno(SuenoRequest(horaDespertar, horaDormir))
             Result.success(response.mensaje)
         } catch (e: Exception) {
-            Result.failure(e)
+            parseError(e)
         }
+    }
+
+    private fun parseError(e: Exception): Result<String> {
+        if (e is HttpException) {
+            try {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorResponse = gson.fromJson(errorBody, ErrorResponseDto::class.java)
+                return Result.failure(Exception(errorResponse.message))
+            } catch (_: Exception) {}
+        }
+        return Result.failure(e)
     }
 }

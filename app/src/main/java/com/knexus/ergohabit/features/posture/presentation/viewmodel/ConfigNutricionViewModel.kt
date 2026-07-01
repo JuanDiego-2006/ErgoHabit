@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,9 +39,9 @@ class ConfigNutricionViewModel @Inject constructor(
                 result.onSuccess { dashboard ->
                     _uiState.update {
                         it.copy(
-                            horaDesayuno = if (dashboard.horaDesayunoConfigurada != "00:00" && dashboard.horaDesayunoConfigurada.isNotBlank()) dashboard.horaDesayunoConfigurada else "08:00",
-                            horaComida = if (dashboard.horaComidaConfigurada != "00:00" && dashboard.horaComidaConfigurada.isNotBlank()) dashboard.horaComidaConfigurada else "14:00",
-                            horaCena = if (dashboard.horaCenaConfigurada != "00:00" && dashboard.horaCenaConfigurada.isNotBlank()) dashboard.horaCenaConfigurada else "20:00"
+                            horaDesayuno = normalizarA24h(dashboard.horaDesayunoConfigurada),
+                            horaComida = normalizarA24h(dashboard.horaComidaConfigurada),
+                            horaCena = normalizarA24h(dashboard.horaCenaConfigurada)
                         )
                     }
                 }
@@ -48,50 +49,72 @@ class ConfigNutricionViewModel @Inject constructor(
         }
     }
 
+    private fun normalizarA24h(hora: String): String {
+        if (hora.isBlank() || hora == "--:--" || hora == "Sin establecer" || hora == "00:00") return ""
+        val clean = hora.trim().uppercase()
+        if (!clean.contains("AM") && !clean.contains("PM")) {
+            return try {
+                val partes = clean.split(" ")[0].split(":")
+                String.format(Locale.ROOT, "%02d:%02d", partes[0].toInt(), partes[1].take(2).toInt())
+            } catch (e: Exception) { clean.take(5) }
+        }
+        return try {
+            val p = clean.split(" ")
+            val t = p[0].split(":")
+            var h = t[0].toInt()
+            if (clean.contains("PM") && h < 12) h += 12
+            if (clean.contains("AM") && h == 12) h = 0
+            String.format(Locale.ROOT, "%02d:%02d", h, t[1].take(2).toInt())
+        } catch (e: Exception) { clean.take(5) }
+    }
+
     fun abrirEditor(comida: String, emoji: String, horaActual: String) {
         _uiState.update { it.copy(
             showSheet = true,
             comidaEditando = comida,
             emojiEditando = emoji,
+            error = null,
             horaTemp = if (horaActual == "00:00" || horaActual.isBlank()) {
                 when(comida) {
-                    "Desayuno" -> "08:00"
-                    "Comida" -> "14:00"
-                    "Cena" -> "20:00"
+                    "Desayuno" -> "07:30"
+                    "Comida" -> "14:30"
+                    "Cena" -> "20:30"
                     else -> "08:00"
                 }
-            } else horaActual
+            } else normalizarA24h(horaActual)
         ) }
     }
 
     fun cerrarEditor() {
-        _uiState.update { it.copy(showSheet = false) }
+        _uiState.update { it.copy(showSheet = false, error = null) }
     }
 
     fun onHoraTempChange(nuevaHora: String) {
-        _uiState.update { it.copy(horaTemp = nuevaHora) }
+        _uiState.update { it.copy(horaTemp = normalizarA24h(nuevaHora)) }
     }
 
     fun confirmarHora() {
         val s = _uiState.value
-        _uiState.update {
-            when (s.comidaEditando) {
-                "Desayuno" -> it.copy(horaDesayuno = s.horaTemp, showSheet = false)
-                "Comida" -> it.copy(horaComida = s.horaTemp, showSheet = false)
-                "Cena" -> it.copy(horaCena = s.horaTemp, showSheet = false)
-                else -> it.copy(showSheet = false)
-            }
-        }
-    }
+        val nueva = normalizarA24h(s.horaTemp)
+        
+        // Sincronización robusta: Si es la primera vez, autocompletamos con valores válidos
+        val d = if (s.comidaEditando == "Desayuno") nueva else normalizarA24h(s.horaDesayuno).ifBlank { "07:30" }
+        val c = if (s.comidaEditando == "Comida") nueva else normalizarA24h(s.horaComida).ifBlank { "14:30" }
+        val ce = if (s.comidaEditando == "Cena") nueva else normalizarA24h(s.horaCena).ifBlank { "20:30" }
 
-    fun guardar() {
         viewModelScope.launch {
-            val s = _uiState.value
             _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
-            repository.configurarHorarios(s.horaDesayuno, s.horaComida, s.horaCena)
+            repository.configurarHorarios(d, c, ce)
                 .onSuccess { msg ->
-                    _uiState.update { it.copy(isLoading = false, successMessage = msg) }
-                    programarAlarmasNutricion(s.horaDesayuno, s.horaComida, s.horaCena)
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        successMessage = msg,
+                        showSheet = false,
+                        horaDesayuno = d,
+                        horaComida = c,
+                        horaCena = ce
+                    ) }
+                    programarAlarmasNutricion(d, c, ce)
                 }
                 .onFailure { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message) }
@@ -99,35 +122,36 @@ class ConfigNutricionViewModel @Inject constructor(
         }
     }
 
-    private fun programarAlarmasNutricion(desayuno: String, comida: String, cena: String) {
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        programar(am, desayuno, "DESAYUNO", 300)
-        programar(am, comida, "COMIDA", 301)
-        programar(am, cena, "CENA", 302)
+    fun guardar() {
+        _uiState.update { it.copy(successMessage = "Horarios guardados") }
     }
 
-    private fun programar(am: AlarmManager, hora: String, tipo: String, code: Int) {
-        if (hora.isBlank() || hora == "00:00") return
-        val partes = hora.split(":")
-        val h = partes.getOrNull(0)?.toIntOrNull() ?: return
-        val m = partes.getOrNull(1)?.toIntOrNull() ?: return
+    private fun programarAlarmasNutricion(d: String, c: String, ce: String) {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        programar(am, d, "DESAYUNO", 300)
+        programar(am, c, "COMIDA", 301)
+        programar(am, ce, "CENA", 302)
+    }
 
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, h)
-            set(Calendar.MINUTE, m)
-            set(Calendar.SECOND, 0)
-            add(Calendar.MINUTE, -10)
-            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
-        }
-
-        val intent = Intent(context, NutricionReceiver::class.java).apply { putExtra("tipoComida", tipo) }
-        val pi = PendingIntent.getBroadcast(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && am.canScheduleExactAlarms()) {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
-        } else {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
-        }
+    private fun programar(am: AlarmManager, hStr: String, tipo: String, code: Int) {
+        if (hStr.isBlank()) return
+        try {
+            val p = hStr.split(":")
+            val cal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, p[0].toInt())
+                set(Calendar.MINUTE, p[1].toInt())
+                set(Calendar.SECOND, 0)
+                add(Calendar.MINUTE, -10)
+                if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
+            }
+            val i = Intent(context, NutricionReceiver::class.java).apply { putExtra("tipoComida", tipo) }
+            val pi = PendingIntent.getBroadcast(context, code, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && am.canScheduleExactAlarms()) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+            }
+        } catch (e: Exception) {}
     }
 
     fun clearMessages() {
