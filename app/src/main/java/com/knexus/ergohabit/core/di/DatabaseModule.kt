@@ -50,4 +50,22 @@ object DatabaseModule {
     fun provideProgresoDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.ProgresoDao {
         return database.progresoDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideAguaDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.AguaDao {
+        return database.aguaDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSuenoDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.SuenoDao {
+        return database.suenoDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNutricionDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.NutricionDao {
+        return database.nutricionDao()
+    }
 }

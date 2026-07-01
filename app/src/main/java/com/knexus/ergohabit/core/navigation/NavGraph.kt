@@ -31,7 +31,7 @@ fun GrafoNavegacion(
 
     NavHost(
         navController = navController,
-        startDestination = NavRuta.Login
+        startDestination = if (estaLogueado) NavRuta.Inicio else NavRuta.Login
     ) {
         // ... (otros composables)
         composable<NavRuta.Login> {
@@ -76,9 +76,11 @@ fun GrafoNavegacion(
 
         composable<NavRuta.Sueno> {
             SuenoScreen(
+                navController = navController,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToConfigHorario = { navController.navigate(NavRuta.ConfigHorario) },
-                onNavigateToRetrasoSueno = { navController.navigate(NavRuta.RetrasoSueno) }
+                onNavigateToRetrasoSueno = { navController.navigate(NavRuta.RetrasoSueno) },
+                notificationIntent = notificationIntent
             )
         }
 
@@ -112,6 +114,7 @@ fun GrafoNavegacion(
 
         composable<NavRuta.Nutricion> {
             NutricionScreen(
+                navController = navController,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToConfigNutricion = { navController.navigate(NavRuta.ConfigNutricion) }
             )

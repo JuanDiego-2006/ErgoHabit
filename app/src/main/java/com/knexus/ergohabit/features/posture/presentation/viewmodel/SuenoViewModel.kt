@@ -2,7 +2,7 @@ package com.knexus.ergohabit.features.posture.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
+import com.knexus.ergohabit.features.posture.domain.repository.SuenoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SuenoViewModel @Inject constructor(
-    private val api: HabitosApi
+    private val repository: SuenoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SuenoUiState())
@@ -26,38 +26,55 @@ class SuenoViewModel @Inject constructor(
     private fun cargarDashboard() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            try {
-                val respuesta = api.obtenerDashboardSueno()
-                _uiState.update {
-                    it.copy(
-                        horasDormidas = respuesta.horasDormidasReales.toFloat(),
-                        horasRecomendadas = respuesta.horasPlanificadas.toFloat(),
-                        calidad = when {
-                            respuesta.porcentajeCumplimiento >= 80 -> "Buena"
-                            respuesta.porcentajeCumplimiento >= 50 -> "Moderada"
-                            else -> "Baja"
-                        },
-                        horaDormir = respuesta.horaDormirConfigurada,
-                        horaDespertar = respuesta.horaDespertarConfigurada,
-                        alarmaActivada = respuesta.despertoATiempo,
-                        fraseMotivacional = respuesta.fraseMotivacional,
-                        tips = respuesta.tipsSueno,
-                        isLoading = false
-                    )
+            repository.getSuenoDashboard().collect { result ->
+                result.onSuccess { respuesta ->
+                    _uiState.update {
+                        it.copy(
+                            horasDormidas = respuesta.horasDormidasReales.toFloat(),
+                            horasRecomendadas = if (respuesta.horasPlanificadas > 0) 
+                                                   respuesta.horasPlanificadas.toFloat() 
+                                                else 8f,
+                            calidad = when {
+                                respuesta.porcentajeCumplimiento >= 80 -> "Buena"
+                                respuesta.porcentajeCumplimiento >= 50 -> "Moderada"
+                                else -> "Baja"
+                            },
+                            horaDormir = respuesta.horaDormirConfigurada,
+                            horaDespertar = respuesta.horaDespertarConfigurada,
+                            alarmaActivada = respuesta.despertoATiempo,
+                            fraseMotivacional = respuesta.fraseMotivacional,
+                            tips = respuesta.tipsSueno,
+                            isLoading = false
+                        )
+                    }
+                }.onFailure { error ->
+                    _uiState.update { it.copy(isLoading = false, error = error.message) }
                 }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
     fun registrarDespertar() {
         viewModelScope.launch {
-            try {
-                api.registrarDespertarSueno()
+            _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
+            repository.registrarDespertar().onSuccess { msg ->
+                _uiState.update { it.copy(mostrarAlarma = false, isLoading = false, successMessage = msg) }
                 cargarDashboard()
-            } catch (_: Exception) {
+            }.onFailure { error ->
+                _uiState.update { it.copy(isLoading = false, error = error.message) }
             }
         }
+    }
+
+    fun mostrarAlarma(show: Boolean) {
+        _uiState.update { it.copy(mostrarAlarma = show) }
+    }
+
+    fun posponerAlarma() {
+        _uiState.update { it.copy(mostrarAlarma = false) }
+    }
+
+    fun clearMessages() {
+        _uiState.update { it.copy(successMessage = null, error = null) }
     }
 }

@@ -302,6 +302,10 @@ class TareaViewModel @Inject constructor(
         timerJob?.cancel()
 
         timerJob = viewModelScope.launch {
+            // Recuperamos el targetEnd una sola vez al iniciar el motor
+            val initialProgress = getLocalProgressUseCase(runningId)
+            var currentTargetEnd = initialProgress?.targetEndTimeMs ?: -1L
+
             while (true) {
                 delay(1000)
                 segundosParaAlertaHealth++
@@ -309,40 +313,39 @@ class TareaViewModel @Inject constructor(
                 val state = _uiState.value
                 val ahora = System.currentTimeMillis()
 
-                // --- FLUJO API: Solo mostrar alerta si requierePostura es true ---
+                // 1. Gestión de Alerta de Salud
                 if (segundosParaAlertaHealth >= INTERVALO_ALERTA_API && state.alertaSaludInfo?.requierePostura == true) {
-                    // Pausa automática por salud
                     timerJob?.cancel()
                     _uiState.update { it.copy(isTimerRunning = false, mostrarAlertaSalud = true) }
                     pausarTareaUseCase(runningId)
                     segundosParaAlertaHealth = 0
-                    break // Salimos del bucle visual ya que está pausado
+                    break
                 }
 
-                // Obtener el fin de la tarea que corre (del estado si es la seleccionada, sino de Room/Variable)
-                val targetEnd = if (state.tareaSeleccionada?.id == runningId) {
-                    state.targetEndTimeMs
-                } else {
-                    getLocalProgressUseCase(runningId)?.targetEndTimeMs ?: -1L
+                // 2. Sincronización de TargetEnd (Si el usuario cambió de tarea, el state puede tener el dato fresco)
+                if (state.tareaSeleccionada?.id == runningId && state.targetEndTimeMs > 0) {
+                    currentTargetEnd = state.targetEndTimeMs
                 }
 
-                if (targetEnd > 0) {
-                    val nuevoRestante = ((targetEnd - ahora) / 1000).toInt()
+                // 3. CÁLCULO DE ESCUDO DE TIEMPO REAL
+                if (currentTargetEnd > 0) {
+                    val nuevoRestante = ((currentTargetEnd - ahora) / 1000).toInt()
 
                     if (nuevoRestante <= 0) {
                         finalizarTareaVisualmente(runningId)
                         break
                     }
 
-                    // SOLO ACTUALIZAMOS EL TIEMPO EN UI SI LA TAREA SELECCIONADA ES LA QUE CORRE
+                    // SOLO ACTUALIZAMOS LA UI SI LA TAREA SELECCIONADA ES LA QUE CORRE
                     if (state.tareaSeleccionada?.id == runningId) {
                         _uiState.update { it.copy(tiempoRestante = nuevoRestante) }
                     }
                 }
 
+                // 4. Guardado periódico de seguridad
                 if (segundosParaAlertaHealth % 5 == 0) {
-                    val currentRemaining = if (targetEnd > 0) ((targetEnd - ahora) / 1000).toInt() else 0
-                    saveLocalProgressUseCase(runningId, currentRemaining, state.duracionSesionActual, targetEnd)
+                    val currentRemaining = if (currentTargetEnd > 0) ((currentTargetEnd - ahora) / 1000).toInt() else 0
+                    saveLocalProgressUseCase(runningId, currentRemaining, state.duracionSesionActual, currentTargetEnd)
                 }
             }
         }

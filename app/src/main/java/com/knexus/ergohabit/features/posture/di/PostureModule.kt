@@ -4,9 +4,13 @@ import com.knexus.ergohabit.features.posture.data.datasource.api.AuthApi
 import com.knexus.ergohabit.features.posture.data.datasource.api.PosturaApi
 import com.knexus.ergohabit.features.posture.data.mapper.PostureMapper
 import com.knexus.ergohabit.features.posture.data.repository.AuthRepositoryImpl
+import com.knexus.ergohabit.features.posture.data.repository.NutricionRepositoryImpl
 import com.knexus.ergohabit.features.posture.data.repository.PostureRepositoryImpl
+import com.knexus.ergohabit.features.posture.data.repository.SuenoRepositoryImpl
 import com.knexus.ergohabit.features.posture.domain.repository.AuthRepository
+import com.knexus.ergohabit.features.posture.domain.repository.NutricionRepository
 import com.knexus.ergohabit.features.posture.domain.repository.PostureRepository
+import com.knexus.ergohabit.features.posture.domain.repository.SuenoRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -37,6 +41,18 @@ abstract class PostureModule {
     abstract fun bindAguaRepository(
         aguaRepositoryImpl: com.knexus.ergohabit.features.posture.data.repository.AguaRepositoryImpl
     ): com.knexus.ergohabit.features.posture.domain.repository.AguaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSuenoRepository(
+        suenoRepositoryImpl: SuenoRepositoryImpl
+    ): SuenoRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNutricionRepository(
+        nutricionRepositoryImpl: NutricionRepositoryImpl
+    ): NutricionRepository
 
     companion object {
         @Provides

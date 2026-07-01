@@ -9,7 +9,10 @@ data class SuenoUiState(
     val alarmaActivada: Boolean = false,
     val fraseMotivacional: String = "",
     val tips: List<String> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val mostrarAlarma: Boolean = false,
+    val successMessage: String? = null,
+    val error: String? = null
 ) {
     val porcentaje: Float get() = if (horasRecomendadas > 0) {
         (horasDormidas / horasRecomendadas).coerceIn(0f, 1f)

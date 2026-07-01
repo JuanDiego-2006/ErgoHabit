@@ -30,32 +30,32 @@ class HidratacionViewModel @Inject constructor(
     fun cargarDashboard() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            getDashboardAguaUseCase().onSuccess { dashboard ->
-                _uiState.update { it.copy(
-                    mlActuales = dashboard.consumidoHoyMl,
-                    mlObjetivo = dashboard.metaDiariaMl,
-                    vasosObjetivo = (dashboard.metaDiariaMl / 245.0).toInt(),
-                    pesoActual = dashboard.pesoActual.toInt(),
-                    estaturaActual = dashboard.estaturaActual,
-                    pesoInput = dashboard.pesoActual.toInt().toString(),
-                    estaturaInput = String.format(Locale.US, "%.2f", dashboard.estaturaActual),
-                    fraseMotivacional = dashboard.fraseMotivacional,
-                    tipsHidratacion = dashboard.tipsHidratacion,
-                    isLoading = false
-                ) }
-            }.onFailure { error ->
-                _uiState.update { it.copy(error = error.message, isLoading = false) }
+            getDashboardAguaUseCase().collect { result ->
+                result.onSuccess { dashboard ->
+                    _uiState.update { it.copy(
+                        mlActuales = dashboard.consumidoHoyMl,
+                        mlObjetivo = dashboard.metaDiariaMl,
+                        vasosObjetivo = (dashboard.metaDiariaMl / 245.0).toInt(),
+                        pesoActual = dashboard.pesoActual.toInt(),
+                        estaturaActual = dashboard.estaturaActual,
+                        pesoInput = dashboard.pesoActual.toInt().toString(),
+                        estaturaInput = String.format(Locale.US, "%.2f", dashboard.estaturaActual),
+                        fraseMotivacional = dashboard.fraseMotivacional,
+                        tipsHidratacion = dashboard.tipsHidratacion,
+                        isLoading = false
+                    ) }
+                }.onFailure { error ->
+                    _uiState.update { it.copy(error = error.message, isLoading = false) }
+                }
             }
         }
     }
 
     fun agregarAgua(ml: Int) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            registrarTomaAguaUseCase(ml).onSuccess {
-                cargarDashboard()
-            }.onFailure { error ->
-                _uiState.update { it.copy(error = error.message, isLoading = false) }
+            // Sincronización silenciosa (Room se encarga de actualizar la UI instantáneamente)
+            registrarTomaAguaUseCase(ml).onFailure { error ->
+                _uiState.update { it.copy(error = "Fallo de conexión: Tu registro se sincronizará luego") }
             }
         }
     }

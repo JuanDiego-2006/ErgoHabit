@@ -13,7 +13,9 @@ data class NutricionUiState(
     val fraseMotivacional: String = "",
     val tips: List<String> = emptyList(),
     val porcentajeBackend: Int = 0,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val successMessage: String? = null,
+    val error: String? = null
 ) {
     val porcentaje: Float
         get() = if (porcentajeBackend > 0) {

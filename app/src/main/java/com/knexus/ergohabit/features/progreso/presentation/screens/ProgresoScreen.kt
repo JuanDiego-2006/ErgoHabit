@@ -156,12 +156,13 @@ fun HabitosGrid(habitos: List<HabitoProgreso>, idHabitoSeleccionado: Int?, onHab
         HabitoProgreso(4, "Postura", "🧘", "#2E7D52", 0)
     )
 
-    // Combinamos con los datos reales pero protegemos Icono y Color
+    // Combinamos con los datos reales pero protegemos Nombre, Icono y Color
     val displayHabitos = baseHabitos.map { base ->
         val real = habitos.find { it.id == base.id }
         if (real != null) {
-            // Si existe el dato real, lo usamos pero nos aseguramos que el icono y color no sean basura
+            // Si existe el dato real, lo usamos pero nos aseguramos que los campos no sean basura
             real.copy(
+                nombre = if (real.nombre.isBlank()) base.nombre else real.nombre,
                 icono = if (real.icono.isBlank()) base.icono else real.icono,
                 colorHex = if (real.colorHex.isBlank() || !real.colorHex.startsWith("#")) base.colorHex else real.colorHex
             )
@@ -233,7 +234,7 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
     val tituloGrafica = if (detalle.idHabito == 4) {
         "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
     } else {
-        detalle.titulo.uppercase()
+        detalle.titulo.ifBlank { "DETALLE DEL HÁBITO" }.uppercase()
     }
 
     Card(

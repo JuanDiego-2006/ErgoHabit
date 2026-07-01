@@ -7,7 +7,6 @@ import com.knexus.ergohabit.features.perfil.domain.entities.UsuarioPerfil
 import com.knexus.ergohabit.features.perfil.domain.usecases.GetPerfilUseCase
 import com.knexus.ergohabit.features.perfil.domain.usecases.UpdateFotoPerfilUseCase
 import com.knexus.ergohabit.features.perfil.domain.usecases.UpdatePerfilUseCase
-import com.knexus.ergohabit.features.perfil.domain.usecases.ClearLocalProfileUseCase
 import com.knexus.ergohabit.features.perfil.domain.usecases.EliminarPerfilUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +32,7 @@ class PerfilViewModel @Inject constructor(
     private val getPerfilUseCase: GetPerfilUseCase,
     private val updatePerfilUseCase: UpdatePerfilUseCase,
     private val updateFotoPerfilUseCase: UpdateFotoPerfilUseCase,
-    private val clearLocalProfileUseCase: ClearLocalProfileUseCase,
+    private val clearAllLocalDataUseCase: com.knexus.ergohabit.features.perfil.domain.usecases.ClearAllLocalDataUseCase,
     private val eliminarPerfilUseCase: EliminarPerfilUseCase,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -48,7 +47,7 @@ class PerfilViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             eliminarPerfilUseCase(idUsuario).onSuccess {
-                clearLocalProfileUseCase()
+                clearAllLocalDataUseCase()
                 sessionManager.clearSession()
                 onDeleteSuccess()
             }.onFailure { error ->
@@ -156,7 +155,7 @@ class PerfilViewModel @Inject constructor(
 
     fun cerrarSesion(onLogoutSuccess: () -> Unit) {
         viewModelScope.launch {
-            clearLocalProfileUseCase()
+            clearAllLocalDataUseCase()
             sessionManager.clearSession()
             onLogoutSuccess()
         }

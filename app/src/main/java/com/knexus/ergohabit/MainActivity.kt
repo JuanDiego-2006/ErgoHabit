@@ -9,16 +9,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-// --- TUS CAMBIOS: IMPORTACIÓN DE COMPOSABLE EXTRA ---
-import androidx.compose.runtime.*
 import androidx.navigation.compose.rememberNavController
 import com.knexus.ergohabit.core.navigation.GrafoNavegacion
 import com.knexus.ergohabit.core.session.SessionManager
@@ -37,16 +33,13 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var gestorMonitoreo: GestorMonitoreoPostura
 
-    // --- TUS CAMBIOS: VARIABLE DE INTENT REACTIVO ---
-    private var currentIntent by mutableStateOf<Intent?>(null)
-
+    private val reactiveIntent = mutableStateOf<Intent?>(null)
     private val permisoCamaraState = mutableStateOf(false)
 
-    // --- TUS CAMBIOS: IMPLEMENTACIÓN DE ONNEWINTENT ---
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        currentIntent = intent
+        reactiveIntent.value = intent
     }
 
     private val lanzadorPermisos = registerForActivityResult(
@@ -59,8 +52,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         permisoCamaraState.value = tienePermisoCamara()
-        // --- TUS CAMBIOS: CAPTURA DEL INTENT INICIAL ---
-        currentIntent = intent
+        reactiveIntent.value = intent
 
         setContent {
             ErgoHabitTheme {
@@ -68,9 +60,10 @@ class MainActivity : ComponentActivity() {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val monitoreo by gestorMonitoreo.estado.collectAsState()
                 val tienePermisoCamara by permisoCamaraState
+                val currentReactiveIntent by reactiveIntent
                 val navController = rememberNavController()
 
-                androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+                DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
                             permisoCamaraState.value = ContextCompat.checkSelfPermission(
@@ -91,24 +84,35 @@ class MainActivity : ComponentActivity() {
                     onCamaraInactiva = { gestorMonitoreo.marcarCamaraInactiva() }
                 )
 
-                // --- TUS CAMBIOS: MANEJO GLOBAL DE REDIRECCIÓN POR NOTIFICACIONES ---
-                LaunchedEffect(currentIntent) {
-                    val intent = currentIntent
-                    if (intent != null && (intent.hasExtra("frase") || intent.hasExtra("tareaCompletadaId") || intent.hasExtra("idTareaAlerta"))) {
-                        if (sessionManager.fetchAuthToken() != null) {
-                            navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Tareas()) {
-                                launchSingleTop = true
+                LaunchedEffect(currentReactiveIntent) {
+                    val intent = currentReactiveIntent
+                    if (intent != null) {
+                        if (intent.hasExtra("frase") || intent.hasExtra("tareaCompletadaId") || intent.hasExtra("idTareaAlerta")) {
+                            if (sessionManager.fetchAuthToken() != null) {
+                                navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Tareas()) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        } else if (intent.hasExtra("irASueno") || intent.hasExtra("mostrarAlarmaSueno")) {
+                            if (sessionManager.fetchAuthToken() != null) {
+                                navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Sueno) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        } else if (intent.hasExtra("irANutricion")) {
+                            if (sessionManager.fetchAuthToken() != null) {
+                                navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Nutricion) {
+                                    launchSingleTop = true
+                                }
                             }
                         }
                     }
                 }
-                // -------------------------------------------------------------------
 
                 GrafoNavegacion(
                     navController = navController,
                     sessionManager = sessionManager,
-                    // --- TUS CAMBIOS: SE PASA EL INTENT AL GRAFO ---
-                    notificationIntent = currentIntent
+                    notificationIntent = currentReactiveIntent
                 )
             }
         }

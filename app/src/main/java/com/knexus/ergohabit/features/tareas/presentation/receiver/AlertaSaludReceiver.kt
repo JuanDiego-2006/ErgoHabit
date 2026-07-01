@@ -100,25 +100,10 @@ class AlertaSaludReceiver : BroadcastReceiver() {
                     notificationManager.notify(idTarea, builder.build())
                 }
             } finally {
-                programarSiguienteAlerta(context, idTarea)
                 result.finish()
             }
         }
     }
 
-    private fun programarSiguienteAlerta(context: Context, idTarea: Int) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val nextIntent = Intent(context, AlertaSaludReceiver::class.java).apply {
-            putExtra("idTarea", idTarea)
-            putExtra("esFinDeTarea", false)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(context, idTarea, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val triggerTime = System.currentTimeMillis() + (30 * 60 * 1000) // 30 minutos reales
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        } else {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        }
-    }
+    // Nota: La siguiente alerta se programa desde TareaViewModel al dar clic en "¡Listo!"
 }

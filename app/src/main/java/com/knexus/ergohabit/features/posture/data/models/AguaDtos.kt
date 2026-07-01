@@ -2,7 +2,7 @@ package com.knexus.ergohabit.features.posture.data.models
 
 import com.google.gson.annotations.SerializedName
 
-data class RegistrarTomaRequest(
+data class AguaRegistrarTomaRequest(
     @SerializedName("cantidadMl") val cantidadMl: Int
 )
 
@@ -36,7 +36,7 @@ data class AguaMensajeResponse(
     @SerializedName("mensaje") val mensaje: String
 )
 
-data class HistorialHabitoResponse(
+data class AguaHistorialHabitoResponse(
     @SerializedName("tituloSeccion") val tituloSeccion: String,
     @SerializedName("mensajeMeta") val mensajeMeta: String,
     @SerializedName("datosGrafica") val datosGrafica: List<ElementoBarraGrafica>

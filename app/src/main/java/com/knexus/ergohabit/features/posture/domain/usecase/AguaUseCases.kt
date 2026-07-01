@@ -3,10 +3,11 @@ package com.knexus.ergohabit.features.posture.domain.usecase
 import com.knexus.ergohabit.features.posture.domain.entities.DashboardAgua
 import com.knexus.ergohabit.features.posture.domain.entities.RegistroSemanalAgua
 import com.knexus.ergohabit.features.posture.domain.repository.AguaRepository
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class GetDashboardAguaUseCase @Inject constructor(private val repository: AguaRepository) {
-    suspend operator fun invoke(): Result<DashboardAgua> = repository.getDashboardAgua()
+    operator fun invoke(): Flow<Result<DashboardAgua>> = repository.getDashboardAgua()
 }
 
 class RegistrarTomaAguaUseCase @Inject constructor(private val repository: AguaRepository) {

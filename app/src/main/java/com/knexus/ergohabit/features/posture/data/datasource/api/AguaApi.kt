@@ -10,7 +10,7 @@ interface AguaApi {
 
     @POST("api/v1/habitos/agua/toma")
     suspend fun registrarToma(
-        @Body request: RegistrarTomaRequest
+        @Body request: AguaRegistrarTomaRequest
     ): AguaMensajeResponse
 
     @PUT("api/v1/habitos/agua/meta")
@@ -19,5 +19,5 @@ interface AguaApi {
     ): AguaMensajeResponse
 
     @GET("api/v1/habitos/agua/progreso-semanal")
-    suspend fun obtenerProgresoSemanalAgua(): HistorialHabitoResponse
+    suspend fun obtenerProgresoSemanalAgua(): AguaHistorialHabitoResponse
 }
