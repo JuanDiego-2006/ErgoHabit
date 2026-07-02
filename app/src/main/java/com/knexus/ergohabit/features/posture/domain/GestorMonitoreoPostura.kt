@@ -103,7 +103,7 @@ class GestorMonitoreoPostura @Inject constructor(
         syncJob = scope.launch {
             while (true) {
                 // Sincronización cada 2 minutos para pruebas
-                kotlinx.coroutines.delay(2 * 60 * 1000)
+                kotlinx.coroutines.delay(20 * 60 * 1000)
                 postureRepository.sincronizarConServidor()
             }
         }
