@@ -223,7 +223,20 @@ fun HabitoCard(habito: HabitoProgreso, isSelected: Boolean, modifier: Modifier =
 @Composable
 fun DetalleHabitoCard(detalle: DetalleHabito) {
     // Título dinámico ajustado al estilo de la imagen
-    val tituloPrincipal = if (detalle.idHabito == 4) "Alertas de postura" else detalle.titulo.ifBlank { "Detalle del hábito" }
+    val tituloPrincipal = when (detalle.idHabito) {
+        1 -> "Horas de sueño"
+        2 -> "Hidratación (ml)"
+        3 -> "Distancia recorrida (km)"
+        4 -> "Alertas de postura"
+        else -> {
+            detalle.titulo
+                .replace(" - Semana Actual", "", ignoreCase = true)
+                .replace(" Semana Actual", "", ignoreCase = true)
+                .replace("Semana Actual", "", ignoreCase = true)
+                .trim()
+                .ifBlank { "Detalle del hábito" }
+        }
+    }
     val subtitulo = "ÚLTIMOS 7 DÍAS"
 
     Card(
@@ -292,18 +305,23 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
                             textAlign = TextAlign.Center
                         )
                     } else {
+                        val posLabel = if (detalle.idHabito == 2) "Meta cumplida" else detalle.leyendaPositiva
+                        val negLabel = if (detalle.idHabito == 2) "Bajo la meta" else detalle.leyendaNegativa
+
                         CircleDot(Color(0xFF5CB38C))
                         Text(
-                            text = detalle.leyendaPositiva,
+                            text = posLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFB0B0B0),
+                            color = Color(0xFF5E9C76),
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(start = 6.dp, end = 16.dp)
                         )
                         CircleDot(Color(0xFFE54D4D))
                         Text(
-                            text = detalle.leyendaNegativa,
+                            text = negLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFB0B0B0),
+                            color = Color(0xFF5E9C76),
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(start = 6.dp)
                         )
                     }
@@ -315,7 +333,6 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
 
 @Composable
 fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: Int) {
-    // Determinar unidad según el hábito
     val unidad = when(idHabito) {
         2 -> "L"
         3 -> "km"
@@ -323,21 +340,25 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
         else -> "h"
     }
 
-    // Calculamos el máximo para la escala visual de forma profesional
     val maxData = registros.maxOfOrNull { it.valor } ?: 0f
     
-    // Forzamos el tope según el hábito para que coincida con la imagen
-    val topValue = when (idHabito) {
-        2 -> maxOf(5f, Math.ceil(maxData.toDouble()).toFloat()) // Para agua, mínimo 5
-        else -> maxOf(10f, (Math.ceil(maxData / 2.0).toInt() * 2).toFloat()) // Para sueño, mínimo 10, de 2 en 2
+    // Forzamos el tope y pasos de forma estricta
+    val (baseTop, step) = when (idHabito) {
+        2 -> 5f to 1f  // Agua: 5, 4, 3, 2, 1, 0
+        3 -> 20f to 5f // Ejercicio: 20, 15, 10, 5, 0
+        4 -> 500f to 100f // Postura: 500, 400, 300, 200, 100, 0
+        else -> 10f to 2f // Sueño: 10, 8, 6, 4, 2, 0
     }
     
-    val step = if (idHabito == 2) 1f else 2f
+    // Si los datos o la meta superan el tope base, ajustamos proporcionalmente
+    val finalTop = maxOf(baseTop, maxData, meta).let {
+        if (it > baseTop) (Math.ceil(it / step.toDouble()).toInt() * step.toInt()).toFloat()
+        else baseTop
+    }
     
     val yLabels = mutableListOf<String>()
-    var curr = topValue
+    var curr = finalTop
     while (curr >= -0.01f) {
-        // Mostramos decimales para agua (excepto en el 0) y enteros para el resto
         yLabels.add(if (idHabito == 2 && curr > 0.1f) "%.1f".format(curr) else curr.toInt().toString())
         curr -= step
     }
@@ -346,44 +367,45 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
     val yAxisWidth = 32.dp
     val axisGap = 8.dp
     val totalStartPadding = yAxisWidth + axisGap
+    val labelReservedHeight = 24.dp // Espacio para que las etiquetas no se corten arriba
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp) // Aumentado para dar espacio a etiquetas superiores
+            .height(280.dp)
     ) {
         Row(modifier = Modifier.weight(1f)) {
-            // Eje Y: Texto "Horas" o "Litros"
-            if (idHabito != 4) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(bottom = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (idHabito == 2) "Litros" else "Horas",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFB0B0B0),
-                        modifier = Modifier.rotate(-90f)
-                    )
-                }
+            // Eje Y: Texto Lateral
+            Box(
+                modifier = Modifier.fillMaxHeight().padding(bottom = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when(idHabito) {
+                        2 -> "Litros"
+                        3 -> "km"
+                        4 -> "Alertas"
+                        else -> "Horas"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFFB0B0B0),
+                    modifier = Modifier.rotate(-90f)
+                )
             }
 
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                // Área de Gráfica (Líneas + Barras)
                 Box(modifier = Modifier.weight(1f)) {
-                    // Cuadrícula de fondo y Etiquetas Y
+                    // Cuadrícula y Etiquetas Y
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = labelReservedHeight),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         yLabels.forEach { label ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .height(16.dp)
-                                    .padding(end = horizontalPadding)
+                                modifier = Modifier.height(16.dp).padding(end = horizontalPadding)
                             ) {
                                 Text(
                                     text = label,
@@ -393,27 +415,24 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                                     textAlign = TextAlign.End
                                 )
                                 Spacer(modifier = Modifier.width(axisGap))
-                                HorizontalDivider(
-                                    color = Color(0xFFEEEEEE),
-                                    thickness = 1.dp,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.weight(1f))
                             }
                         }
                     }
 
-                    // Barras
+                    // BARRAS Y ETIQUETAS FLOTANTES
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = totalStartPadding, end = horizontalPadding)
-                            .padding(vertical = 8.dp), // Alinea con el centro de las etiquetas (16dp / 2)
+                            .padding(top = labelReservedHeight + 8.dp) // +8dp para alinear con el centro de la línea superior
+                            .padding(bottom = 8.dp), // Alinea con línea 0 (16dp/2)
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Bottom
                     ) {
                         registros.forEach { registro ->
                             val isHoy = registro.etiqueta == "Hoy"
-                            val esFuturo = !isHoy && (registros.indexOf(registro) > registros.indexOf(registros.find { it.etiqueta == "Hoy" }))
+                            val esFuturo = !isHoy && (registros.indexOf(registro) > registros.indexOf(registros.find { it.etiqueta == "Hoy" } ?: registros.last()))
 
                             val barColor = when {
                                 idHabito == 4 -> Color(0xFFE54D4D)
@@ -422,39 +441,44 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                                 else -> Color(0xFFE54D4D)
                             }
 
-                            // La fracción se calcula respecto al valor superior real de la escala
-                            val barHeightFraction = (registro.valor / topValue).coerceIn(0f, 1f)
+                            val barHeightFraction = (registro.valor / finalTop).coerceIn(0f, 1f)
 
                             Box(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
-                                // Barra con altura matemática exacta respecto a la cuadrícula
+                                // Barra con altura matemática exacta (Rectangular)
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth(if (idHabito == 4) 0.7f else 0.6f)
+                                        .fillMaxWidth(if (idHabito == 4) 0.7f else 0.55f)
                                         .fillMaxHeight(barHeightFraction)
-                                        .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
                                         .background(barColor)
                                 )
                                 
-                                // Etiqueta de valor flotando exactamente sobre la barra
-                                Column(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.Bottom,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    val valorFormateado = if (idHabito == 2) "%.1f".format(registro.valor) else registro.valor.toInt().toString()
-                                    Text(
-                                        text = "$valorFormateado$unidad",
-                                        color = barColor,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        maxLines = 1
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    // Este spacer garantiza que el texto "siga" a la barra milimétricamente
-                                    Spacer(modifier = Modifier.fillMaxHeight(barHeightFraction))
+                                // Etiqueta superior flotante
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxHeight((1f - barHeightFraction).coerceAtLeast(0f))
+                                            .fillMaxWidth(),
+                                        verticalArrangement = Arrangement.Bottom,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        val valorFormateado = when (idHabito) {
+                                            2 -> "%.1f".format(registro.valor)
+                                            3 -> "%.2f".format(registro.valor)
+                                            else -> registro.valor.toInt().toString()
+                                        }
+                                        Text(
+                                            text = "$valorFormateado$unidad",
+                                            color = barColor,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = if (idHabito == 3) 9.sp else 10.sp,
+                                            maxLines = 1,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
                                 }
                             }
                         }
@@ -463,11 +487,9 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Etiquetas X (Días)
+                // Eje X: Días centrados con las barras
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = totalStartPadding, end = horizontalPadding),
+                    modifier = Modifier.fillMaxWidth().padding(start = totalStartPadding, end = horizontalPadding),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     registros.forEach { registro ->
@@ -482,7 +504,6 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                         )
                     }
                 }
-                
                 Spacer(modifier = Modifier.height(4.dp))
             }
         }

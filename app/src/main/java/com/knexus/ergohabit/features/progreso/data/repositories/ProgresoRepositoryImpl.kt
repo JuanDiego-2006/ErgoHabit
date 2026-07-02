@@ -103,7 +103,7 @@ class ProgresoRepositoryImpl @Inject constructor(
             emit(Result.success(DetalleHabito(
                 idHabito = idHabito,
                 titulo = habitBase.tituloSeccion ?: habitBase.nombre.uppercase(),
-                metaValor = when(idHabito){ 2 -> 7.04f; else -> 8f }, // Meta visual orientativa
+                metaValor = when(idHabito){ 2 -> 2.5f; else -> 8f }, // Meta visual orientativa
                 leyendaPositiva = habitBase.leyendaPositiva ?: "Verde = meta cumplida",
                 leyendaNegativa = habitBase.leyendaNegativa ?: "Rojo = meta no cumplida",
                 registros = localRegistros.map { it.toDomain() }
@@ -124,7 +124,7 @@ class ProgresoRepositoryImpl @Inject constructor(
             val detalle = DetalleHabito(
                 idHabito = idHabito,
                 titulo = response.tituloSeccion ?: "DETALLE",
-                metaValor = when(idHabito){ 2 -> 7.04f; else -> 8f },
+                metaValor = when(idHabito){ 2 -> 2.5f; else -> 8f },
                 leyendaPositiva = if (idHabito == 4) "" else "Verde = meta cumplida",
                 leyendaNegativa = if (idHabito == 4) response.mensajeMeta else "Rojo = meta no cumplida",
                 registros = registrosOrdenados

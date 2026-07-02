@@ -28,7 +28,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
-import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.posture.presentation.viewmodel.NutricionViewModel
 import com.knexus.ergohabit.ui.theme.*
 
@@ -66,7 +65,6 @@ fun NutricionScreen(
 
     Scaffold(
         containerColor = BgMain,
-        bottomBar = { BarraNavegacionInferior(navController) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(

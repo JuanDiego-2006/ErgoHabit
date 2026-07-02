@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.knexus.ergohabit.features.posture.presentation.components.BarraNavegacionInferior
 import com.knexus.ergohabit.features.posture.presentation.viewmodel.SuenoViewModel
 import com.knexus.ergohabit.ui.theme.*
 
@@ -98,7 +97,6 @@ fun SuenoScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = BgMain,
-            bottomBar = { BarraNavegacionInferior(navController) },
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
             Column(
