@@ -22,3 +22,10 @@ class MarcarComidaUseCase @Inject constructor(
     suspend operator fun invoke(tipo: String, estado: Boolean) =
         repository.marcarComida(tipo, estado)
 }
+
+class SetNotificacionesNutricionUseCase @Inject constructor(
+    private val repository: NutricionRepository
+) {
+    suspend operator fun invoke(habilitadas: Boolean) =
+        repository.setNotificacionesHabilitadas(habilitadas)
+}

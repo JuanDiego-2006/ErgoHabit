@@ -40,7 +40,8 @@ class NutricionRepositoryImpl @Inject constructor(
                         horaCenaConfigurada = local.horaCena,
                         chequeoDesayuno = local.chequeoDesayuno,
                         chequeoComida = local.chequeoComida,
-                        chequeoCena = local.chequeoCena
+                        chequeoCena = local.chequeoCena,
+                        notificacionesHabilitadasLocal = local.notificacionesHabilitadas
                     )))
                 }
             }
@@ -51,6 +52,7 @@ class NutricionRepositoryImpl @Inject constructor(
             val response = api.obtenerDashboardNutricion()
             val userId = sessionManager.fetchUserId()
             if (userId != -1) {
+                val currentLocal = dao.getNutricionConfig().firstOrNull()
                 dao.insertNutricionConfig(NutricionEntity(
                     userId = userId,
                     horaDesayuno = response.horaDesayunoConfigurada,
@@ -58,7 +60,8 @@ class NutricionRepositoryImpl @Inject constructor(
                     horaCena = response.horaCenaConfigurada,
                     chequeoDesayuno = response.chequeoDesayuno,
                     chequeoComida = response.chequeoComida,
-                    chequeoCena = response.chequeoCena
+                    chequeoCena = response.chequeoCena,
+                    notificacionesHabilitadas = currentLocal?.notificacionesHabilitadas ?: true
                 ))
             }
         } catch (_: Exception) {}
@@ -97,6 +100,10 @@ class NutricionRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             parseError(e)
         }
+    }
+
+    override suspend fun setNotificacionesHabilitadas(habilitadas: Boolean) {
+        dao.setNotificacionesStatus(habilitadas)
     }
 
     private fun parseError(e: Exception): Result<String> {

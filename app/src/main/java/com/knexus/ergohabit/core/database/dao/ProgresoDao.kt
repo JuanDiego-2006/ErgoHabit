@@ -28,9 +28,7 @@ interface ProgresoDao {
 
     @Transaction
     suspend fun updateDetalleHabito(idHabito: Int, habit: HabitoProgresoEntity, registros: List<RegistroSemanalEntity>) {
-        // Actualizar datos base del hábito
         insertHabitos(listOf(habit))
-        // Reemplazar registros semanales
         deleteRegistrosByHabito(idHabito)
         insertRegistros(registros)
     }

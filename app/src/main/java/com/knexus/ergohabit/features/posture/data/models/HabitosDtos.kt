@@ -79,7 +79,8 @@ data class NutricionDashboardResponse(
     @SerializedName("chequeoComida") val chequeoComida: Boolean,
     @SerializedName("chequeoCena") val chequeoCena: Boolean,
     @SerializedName("fraseMotivacional") val fraseMotivacional: String = "",
-    @SerializedName("tipsNutricion") val tipsNutricion: List<String> = emptyList()
+    @SerializedName("tipsNutricion") val tipsNutricion: List<String> = emptyList(),
+    val notificacionesHabilitadasLocal: Boolean = true
 )
 
 data class ConfigurarNutricionRequest(

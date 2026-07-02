@@ -16,7 +16,6 @@ interface EjercicioDao {
     @Query("DELETE FROM ejercicio_dashboard")
     suspend fun clearDashboard()
 
-    // --- SESIÓN ACTUAL ---
     @Query("SELECT * FROM ejercicio_sesion_actual WHERE id = 1")
     suspend fun getSesionActual(): EjercicioSesionEntity?
 

@@ -11,6 +11,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -205,18 +207,36 @@ fun NutricionScreen(
                         .padding(20.dp)
                 ) {
                     Column {
-                        Text(
-                            text = "Horarios de Comida",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Configura tus horarios ideales",
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Horarios de Comida",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Configura tus horarios ideales",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                            Icon(
+                                imageVector = if (state.notificacionesHabilitadas) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff,
+                                contentDescription = "Toggle Notificaciones",
+                                tint = if (state.notificacionesHabilitadas) NutricionVerde else Color.Gray,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable { viewModel.toggleNotificaciones() }
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         FilaComida(
                             emoji = "🥐",

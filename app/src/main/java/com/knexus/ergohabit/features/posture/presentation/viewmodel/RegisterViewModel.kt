@@ -41,6 +41,14 @@ class RegisterViewModel @Inject constructor(
         _uiState.update { estado -> estado.copy(password = value, errorMessage = null) }
     }
 
+    fun onPrivacidadChange(value: Boolean) {
+        _uiState.update { estado -> estado.copy(aceptoPrivacidad = value) }
+    }
+
+    fun onTerminosChange(value: Boolean) {
+        _uiState.update { estado -> estado.copy(aceptoTerminos = value) }
+    }
+
     fun onTogglePasswordVisibility() {
         _uiState.update { estado -> estado.copy(passwordVisible = !estado.passwordVisible) }
     }

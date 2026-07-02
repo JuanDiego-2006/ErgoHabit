@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knexus.ergohabit.features.posture.domain.usecase.GetNutricionDashboardUseCase
 import com.knexus.ergohabit.features.posture.domain.usecase.MarcarComidaUseCase
+import com.knexus.ergohabit.features.posture.domain.usecase.SetNotificacionesNutricionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NutricionViewModel @Inject constructor(
     private val getNutricionDashboardUseCase: GetNutricionDashboardUseCase,
-    private val marcarComidaUseCase: MarcarComidaUseCase
+    private val marcarComidaUseCase: MarcarComidaUseCase,
+    private val setNotificacionesNutricionUseCase: SetNotificacionesNutricionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NutricionUiState())
@@ -65,6 +67,7 @@ class NutricionViewModel @Inject constructor(
                             fraseMotivacional = respuesta.fraseMotivacional,
                             tips = respuesta.tipsNutricion,
                             porcentajeBackend = respuesta.porcentajeCumplimiento,
+                            notificacionesHabilitadas = respuesta.notificacionesHabilitadasLocal,
                             isLoading = false
                         )
                     }
@@ -92,6 +95,21 @@ class NutricionViewModel @Inject constructor(
             }.onFailure { error ->
                 _uiState.update { it.copy(error = error.message) }
                 cargarDashboard(silent = true)
+            }
+        }
+    }
+
+    fun toggleNotificaciones() {
+        viewModelScope.launch {
+            val actual = _uiState.value.notificacionesHabilitadas
+            val nuevo = !actual
+            setNotificacionesNutricionUseCase(nuevo)
+            _uiState.update { it.copy(notificacionesHabilitadas = nuevo) }
+            
+            if (nuevo) {
+                _uiState.update { it.copy(successMessage = "Notificaciones activadas") }
+            } else {
+                _uiState.update { it.copy(successMessage = "Notificaciones desactivadas") }
             }
         }
     }

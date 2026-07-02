@@ -266,36 +266,14 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
 
             BarChartSieteDias(detalle.registros, detalle.metaValor, detalle.idHabito)
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Línea de Meta (solo si no es postura) y Leyenda
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                if (detalle.idHabito != 4) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Canvas(modifier = Modifier.fillMaxWidth().height(1.dp)) {
-                            drawLine(
-                                color = Color.LightGray.copy(alpha = 0.5f),
-                                start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                                end = androidx.compose.ui.geometry.Offset(size.width, 0f),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                            )
-                        }
-                        Text(
-                            text = "META",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF5E9C76),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.background(Color.White).padding(horizontal = 8.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+            // Leyenda
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                     if (detalle.idHabito == 4) {
                         // Leyenda específica para postura según la imagen
                         Text(
@@ -326,7 +304,6 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
                         )
                     }
                 }
-            }
         }
     }
 }
@@ -485,7 +462,7 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Eje X: Días centrados con las barras
                 Row(
@@ -503,6 +480,32 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
                             textAlign = TextAlign.Center
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Separador "DÍAS" alineado con las barras
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = totalStartPadding, end = horizontalPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.fillMaxWidth().height(1.dp)) {
+                        drawLine(
+                            color = Color.LightGray.copy(alpha = 0.5f),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                        )
+                    }
+                    Text(
+                        text = "DÍAS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF5E9C76),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.background(Color.White).padding(horizontal = 8.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
             }

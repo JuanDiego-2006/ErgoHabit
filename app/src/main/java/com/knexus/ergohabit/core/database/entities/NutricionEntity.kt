@@ -13,5 +13,6 @@ data class NutricionEntity(
     val chequeoDesayuno: Boolean = false,
     val chequeoComida: Boolean = false,
     val chequeoCena: Boolean = false,
+    val notificacionesHabilitadas: Boolean = true,
     val lastUpdated: Long = System.currentTimeMillis()
 )

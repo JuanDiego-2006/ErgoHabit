@@ -13,6 +13,7 @@ data class NutricionUiState(
     val fraseMotivacional: String = "",
     val tips: List<String> = emptyList(),
     val porcentajeBackend: Int = 0,
+    val notificacionesHabilitadas: Boolean = true,
     val isLoading: Boolean = true,
     val successMessage: String? = null,
     val error: String? = null

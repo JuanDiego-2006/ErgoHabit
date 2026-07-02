@@ -14,4 +14,7 @@ interface NutricionDao {
 
     @Query("DELETE FROM nutricion_config")
     suspend fun clearNutricionConfig()
+
+    @Query("UPDATE nutricion_config SET notificacionesHabilitadas = :status WHERE id = 1")
+    suspend fun setNotificacionesStatus(status: Boolean)
 }

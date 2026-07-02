@@ -17,6 +17,8 @@ import com.knexus.ergohabit.features.posture.presentation.screens.PostureScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RegisterScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.RetrasoSuenoScreen
 import com.knexus.ergohabit.features.posture.presentation.screens.SuenoScreen
+import com.knexus.ergohabit.features.posture.presentation.screens.AvisoPrivacidadScreen
+import com.knexus.ergohabit.features.posture.presentation.screens.TerminosCondicionesScreen
 import com.knexus.ergohabit.features.progreso.presentation.screens.ProgresoScreen
 import com.knexus.ergohabit.features.perfil.presentation.screens.PerfilScreen
 import com.knexus.ergohabit.features.tareas.presentation.screens.TareaScreen
@@ -56,7 +58,9 @@ fun GrafoNavegacion(
                     navController.navigate(NavRuta.Inicio) {
                         popUpTo(NavRuta.Register) { inclusive = true }
                     }
-                }
+                },
+                onNavigateToPrivacidad = { navController.navigate(NavRuta.AvisoPrivacidad) },
+                onNavigateToTerminos = { navController.navigate(NavRuta.TerminosCondiciones) }
             )
         }
 
@@ -142,6 +146,30 @@ fun GrafoNavegacion(
 
         composable<NavRuta.Perfil> {
             PerfilScreen(navController = navController)
+        }
+
+        composable<NavRuta.AvisoPrivacidad> {
+            val viewModel: com.knexus.ergohabit.features.posture.presentation.viewmodel.RegisterViewModel = 
+                androidx.hilt.navigation.compose.hiltViewModel(navController.getBackStackEntry(NavRuta.Register))
+            AvisoPrivacidadScreen(
+                onAccept = { 
+                    viewModel.onPrivacidadChange(true)
+                    navController.popBackStack() 
+                },
+                onClose = { navController.popBackStack() }
+            )
+        }
+
+        composable<NavRuta.TerminosCondiciones> {
+            val viewModel: com.knexus.ergohabit.features.posture.presentation.viewmodel.RegisterViewModel = 
+                androidx.hilt.navigation.compose.hiltViewModel(navController.getBackStackEntry(NavRuta.Register))
+            TerminosCondicionesScreen(
+                onAccept = {
+                    viewModel.onTerminosChange(true)
+                    navController.popBackStack()
+                },
+                onClose = { navController.popBackStack() }
+            )
         }
     }
 }

@@ -1,14 +1,18 @@
 package com.knexus.ergohabit.features.posture.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
@@ -18,10 +22,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,7 +42,9 @@ import com.knexus.ergohabit.ui.theme.*
 fun RegisterScreen(
     viewModel: RegisterViewModel = hiltViewModel(),
     onNavigateToLogin: () -> Unit = {},
-    onNavigateToHome: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToPrivacidad: () -> Unit = {},
+    onNavigateToTerminos: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -284,6 +295,106 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // ── AVISO DE PRIVACIDAD ──────────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (state.aceptoPrivacidad) GreenPrimary else Color(0xFFC4C4C4),
+                                    shape = CircleShape
+                                )
+                                .background(if (state.aceptoPrivacidad) GreenPrimary else Color.Transparent)
+                                .clickable { viewModel.onPrivacidadChange(!state.aceptoPrivacidad) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (state.aceptoPrivacidad) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        val avisoAnnotated = buildAnnotatedString {
+                            append("He leído y acepto el ")
+                            pushStringAnnotation("PRIVACY", "privacy")
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) {
+                                append("Aviso de Privacidad")
+                            }
+                            pop()
+                            append(" de ErgoHabit.")
+                        }
+                        ClickableText(
+                            text = avisoAnnotated,
+                            style = TextStyle(fontSize = 12.sp, color = TextSecondary),
+                            onClick = { offset ->
+                                avisoAnnotated.getStringAnnotations("PRIVACY", offset, offset).firstOrNull()?.let {
+                                    onNavigateToPrivacidad()
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // ── TÉRMINOS Y CONDICIONES ───────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (state.aceptoTerminos) GreenPrimary else Color(0xFFC4C4C4),
+                                    shape = CircleShape
+                                )
+                                .background(if (state.aceptoTerminos) GreenPrimary else Color.Transparent)
+                                .clickable { viewModel.onTerminosChange(!state.aceptoTerminos) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (state.aceptoTerminos) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        val terminosAnnotated = buildAnnotatedString {
+                            append("He leído y acepto los ")
+                            pushStringAnnotation("TERMS", "terms")
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) {
+                                append("Términos y Condiciones")
+                            }
+                            pop()
+                            append(" de ErgoHabit.")
+                        }
+                        ClickableText(
+                            text = terminosAnnotated,
+                            style = TextStyle(fontSize = 12.sp, color = TextSecondary),
+                            onClick = { offset ->
+                                terminosAnnotated.getStringAnnotations("TERMS", offset, offset).firstOrNull()?.let {
+                                    onNavigateToTerminos()
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     // --- CAMBIO REALIZADO: Mostrar mensaje de error si existe ---
                     if (state.errorMessage != null) {
                         Text(
@@ -298,13 +409,14 @@ fun RegisterScreen(
                     // ── BOTÓN CREAR CUENTA ────────────────────
                     Button(
                         onClick = {
-                            // --- CAMBIO REALIZADO: Solo llamar a crear cuenta, la navegación se maneja en el LaunchedEffect ---
                             viewModel.onCrearCuenta()
-                            // ---------------------------------------------------------------------------------------------
                         },
-                        enabled = !state.isLoading,
+                        enabled = !state.isLoading && state.aceptoPrivacidad && state.aceptoTerminos,
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = GreenPrimary,
+                            disabledContainerColor = GreenPrimary.copy(alpha = 0.5f)
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)

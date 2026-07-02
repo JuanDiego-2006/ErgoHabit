@@ -18,4 +18,6 @@ sealed class NavRuta {
     @Serializable data class Tareas(val mostrarCompletado: Boolean = false) : NavRuta()
     @Serializable data object Progreso : NavRuta()
     @Serializable data object Perfil : NavRuta()
+    @Serializable data object AvisoPrivacidad : NavRuta()
+    @Serializable data object TerminosCondiciones : NavRuta()
 }
