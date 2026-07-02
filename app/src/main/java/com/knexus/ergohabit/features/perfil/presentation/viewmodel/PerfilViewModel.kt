@@ -157,7 +157,6 @@ class PerfilViewModel @Inject constructor(
         viewModelScope.launch {
             clearAllLocalDataUseCase()
             sessionManager.clearSession()
-            // -------------------------------------------------------
             onLogoutSuccess()
         }
     }

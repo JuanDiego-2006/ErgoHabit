@@ -78,8 +78,13 @@ fun PerfilScreen(
                         onClick = {
                             showDeleteDialog = false
                             viewModel.eliminarCuenta {
+<<<<<<< HEAD
                                 navController.navigate(NavRuta.Login) {
                                     popUpTo(0) { inclusive = true }
+=======
+                                navController.navigate(NavRuta.Login) { 
+                                    popUpTo(0) { inclusive = true } 
+>>>>>>> 8a64dc743e6d795aab4045b340b1977deedb14c9
                                 }
                             }
                         },
@@ -196,7 +201,11 @@ fun PerfilScreen(
                                 color = TextPrimary,
                                 modifier = Modifier.weight(1f)
                             )
+<<<<<<< HEAD
 
+=======
+                            
+>>>>>>> 8a64dc743e6d795aab4045b340b1977deedb14c9
                             // Botón Editar estilo burbuja azul
                             Surface(
                                 shape = RoundedCornerShape(24.dp),
@@ -231,17 +240,29 @@ fun PerfilScreen(
                             InfoItem(Icons.Default.PersonOutline, "NOMBRE(S)", uiState.usuario?.nombre ?: "")
                             InfoItem(Icons.Default.PersonOutline, "PRIMER APELLIDO", uiState.usuario?.primerApellido ?: "")
                             InfoItem(Icons.Default.PersonOutline, "SEGUNDO APELLIDO", uiState.usuario?.segundoApellido ?: "")
+<<<<<<< HEAD
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
+=======
+                            
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                            
+>>>>>>> 8a64dc743e6d795aab4045b340b1977deedb14c9
                             InfoItem(Icons.Default.Email, "CORREO ELECTRÓNICO", uiState.usuario?.correo ?: "", isEmail = true)
                         } else {
                             EditField(Icons.Default.Person, "NOMBRE(S)", uiState.editNombre, viewModel::onNombreChange)
                             EditField(Icons.Default.Person, "PRIMER APELLIDO", uiState.editPrimerApellido, viewModel::onPrimerApellidoChange)
                             EditField(Icons.Default.Person, "SEGUNDO APELLIDO", uiState.editSegundoApellido, viewModel::onSegundoApellidoChange)
+<<<<<<< HEAD
 
                             Spacer(modifier = Modifier.height(16.dp))
 
+=======
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+>>>>>>> 8a64dc743e6d795aab4045b340b1977deedb14c9
                             Button(
                                 onClick = { viewModel.guardarCambios() },
                                 modifier = Modifier.fillMaxWidth().height(50.dp),
