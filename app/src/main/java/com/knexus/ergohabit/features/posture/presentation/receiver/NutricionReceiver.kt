@@ -125,7 +125,7 @@ class NutricionReceiver : BroadcastReceiver() {
     private fun reprogramarAlertas(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val config = nutricionDao.getNutricionConfig().first()
-            if (config != null) {
+            if (config != null && config.notificacionesHabilitadas) {
                 val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
                 programar(context, am, config.horaDesayuno, "DESAYUNO", 300)
                 programar(context, am, config.horaComida, "COMIDA", 301)

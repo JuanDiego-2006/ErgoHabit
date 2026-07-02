@@ -43,7 +43,8 @@ class ConfigNutricionViewModel @Inject constructor(
                         it.copy(
                             horaDesayuno = normalizarA24h(dashboard.horaDesayunoConfigurada),
                             horaComida = normalizarA24h(dashboard.horaComidaConfigurada),
-                            horaCena = normalizarA24h(dashboard.horaCenaConfigurada)
+                            horaCena = normalizarA24h(dashboard.horaCenaConfigurada),
+                            notificacionesHabilitadas = dashboard.notificacionesHabilitadasLocal
                         )
                     }
                 }
@@ -128,6 +129,7 @@ class ConfigNutricionViewModel @Inject constructor(
     }
 
     private fun programarAlarmasNutricion(d: String, c: String, ce: String) {
+        if (!_uiState.value.notificacionesHabilitadas) return
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         programar(am, d, "DESAYUNO", 300)
         programar(am, c, "COMIDA", 301)

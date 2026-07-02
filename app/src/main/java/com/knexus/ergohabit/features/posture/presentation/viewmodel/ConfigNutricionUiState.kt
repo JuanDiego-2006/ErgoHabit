@@ -4,6 +4,7 @@ data class ConfigNutricionUiState(
     val horaDesayuno: String = "",
     val horaComida: String = "",
     val horaCena: String = "",
+    val notificacionesHabilitadas: Boolean = true,
     val isLoading: Boolean = false,
     val successMessage: String? = null,
     val error: String? = null,
