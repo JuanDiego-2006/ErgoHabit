@@ -19,10 +19,15 @@ data class PosturaUiState(
     val mensajeCamara: String = "",
     val camaraActiva: Boolean = false,
     val alertaPorCamara: Boolean = false,
-    val nombreUsuario: String = "",
     val habitosCompletados: Int = 0,
     val habitosTotal: Int = 4,
     val rachaDias: Int = 0,
     val resumenHabitos: List<ResumenHabitoUi> = emptyList(),
-    val cargandoDashboard: Boolean = true
+    val cargandoDashboard: Boolean = true,
+
+    // --- NUEVO: Sincronización de Agua ---
+    val aguaPorcentaje: Int = 0,
+    val aguaMetaTexto: String = "Meta: --",
+    val nombreUsuario: String = "Usuario",
+    val error: String? = null
 )

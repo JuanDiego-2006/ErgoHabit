@@ -7,6 +7,7 @@ import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
 import com.knexus.ergohabit.features.posture.domain.GestorMonitoreoPostura
 import com.knexus.ergohabit.features.progreso.data.datasource.api.ProgresoDiarioApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,9 +49,14 @@ class PosturaViewModel @Inject constructor(
     }
 
     fun refrescarDashboard() {
-        val userId = sessionManager.fetchUserId() ?: return
+        val userId = sessionManager.fetchUserId()
+        if (userId == -1) {
+            _estadoUi.update { it.copy(cargandoDashboard = false, error = "No se pudo identificar al usuario") }
+            return
+        }
+
         viewModelScope.launch {
-            _estadoUi.update { it.copy(cargandoDashboard = true) }
+            _estadoUi.update { it.copy(cargandoDashboard = true, error = null) }
             try {
                 val progreso = progresoDiarioApi.getProgresoDiario(userId)
                 val nutricion = habitosApi.obtenerDashboardNutricion()
@@ -94,13 +100,26 @@ class PosturaViewModel @Inject constructor(
                         habitosTotal = habitos.size,
                         rachaDias = progreso.rachaDias,
                         resumenHabitos = habitos,
-                        cargandoDashboard = false
+                        cargandoDashboard = false,
+                        error = null
                     )
                 }
-            } catch (_: Exception) {
-                _estadoUi.update { it.copy(cargandoDashboard = false) }
+            } catch (e: Exception) {
+                _estadoUi.update { 
+                    it.copy(
+                        cargandoDashboard = false, 
+                        error = "El servidor está despertando o no hay internet. Reintentando..."
+                    ) 
+                }
+                // Intento automático de reintento tras 5 segundos si falló por timeout
+                delay(5000)
+                refrescarDashboard()
             }
         }
+    }
+
+    fun clearError() {
+        _estadoUi.update { it.copy(error = null) }
     }
 
     fun alternarMonitoreo() {

@@ -6,5 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface PerfilRepository {
     fun getPerfil(idUsuario: Int): Flow<Result<UsuarioPerfil>>
     suspend fun updateFotoPerfil(idUsuario: Int, fotoUri: String): Result<String>
-    suspend fun updatePerfil(perfil: UsuarioPerfil): Result<Unit>
+    suspend fun updatePerfil(idUsuario: Int, perfil: UsuarioPerfil): Result<String>
+    suspend fun eliminarPerfil(idUsuario: Int): Result<String>
+    suspend fun clearLocalProfile()
 }

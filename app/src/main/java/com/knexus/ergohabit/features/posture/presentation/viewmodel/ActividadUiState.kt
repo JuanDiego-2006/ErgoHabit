@@ -18,24 +18,23 @@ data class ActividadUiState(
     val errorSensor: String? = null
 ) {
     val porcentaje: Float
-        get() = if (kmObjetivo > 0) {
-            (kmActuales / kmObjetivo).coerceIn(0f, 1f)
-        } else {
-            0f
+        get() = when {
+            kmObjetivo <= 0f -> 0f
+            else -> (kmActuales / kmObjetivo).coerceIn(0f, 1f)
         }
     val kmRestantes: Float get() = (kmObjetivo - kmActuales).coerceAtLeast(0f)
-    val metaCumplida: Boolean get() = kmObjetivo > 0f && kmActuales >= kmObjetivo
+    val metaCumplida: Boolean get() = (kmObjetivo > 0f && kmActuales >= kmObjetivo) || porcentajeBackend >= 100
     val mensajeBanner: String
-        get() = if (metaCumplida) {
-            mensajeFaltante.ifBlank { "¡Meta diaria alcanzada!" }
-        } else {
-            "¡Te faltan ${"%.2f".format(kmRestantes)} km!"
+        get() = when {
+            kmObjetivo <= 0f -> "¡Define una meta para empezar!"
+            metaCumplida -> mensajeFaltante.ifBlank { "¡Meta diaria alcanzada!" }
+            else -> "¡Te faltan ${"%.2f".format(kmRestantes)} km!"
         }
     val sugerenciaBanner: String
-        get() = if (metaCumplida) {
-            sugerencia.ifBlank { "¡Excelente trabajo! Has cumplido tu objetivo de hoy." }
-        } else {
-            sugerencia.ifBlank {
+        get() = when {
+            kmObjetivo <= 0f -> "Ve a configuración para establecer tu objetivo diario ⚙️"
+            metaCumplida -> sugerencia.ifBlank { "¡Excelente trabajo! Has cumplido tu objetivo de hoy." }
+            else -> sugerencia.ifBlank {
                 "Una caminata de ${(kmRestantes * 10).toInt().coerceAtLeast(5)} minutos te acercará a tu meta 🚶"
             }
         }

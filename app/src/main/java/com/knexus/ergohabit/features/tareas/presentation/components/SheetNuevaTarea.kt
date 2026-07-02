@@ -104,9 +104,10 @@ fun SheetNuevaTarea(
                     nombre = nombre,
                     icono = when(nombre) {
                         "Académica" -> "📚"
-                        "Trabajo" -> "💻"
+                        "Bienestar" -> "🧘"
+                        "Laboral" -> "💼"
+                        "Enfoque Profundo" -> "🧠"
                         "Personal" -> "👤"
-                        "Salud" -> "🧘"
                         else -> "📌"
                     },
                     isSelected = categoriaSeleccionada == nombre,
@@ -151,6 +152,7 @@ fun SheetNuevaTarea(
                 val horas = duracionMinutos / 60
                 val mins = duracionMinutos % 60
                 val textoDuracion = when {
+                    duracionMinutos == 0 -> "Seleccionar tiempo"
                     horas > 0 && mins > 0 -> "$horas h $mins min"
                     horas > 0 -> "$horas h"
                     else -> "$mins min"
@@ -160,7 +162,7 @@ fun SheetNuevaTarea(
                     text = textoDuracion,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = if (duracionMinutos == 0) TextGray.copy(alpha = 0.5f) else TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -175,17 +177,18 @@ fun SheetNuevaTarea(
         Spacer(modifier = Modifier.height(32.dp))
 
         // BOTÓN AGREGAR
+        val camposCompletos = titulo.isNotBlank() && duracionMinutos > 0
         Button(
             onClick = onAgregarClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = GreenPrimary.copy(alpha = 0.3f),
+                containerColor = if (camposCompletos) GreenPrimary else GreenPrimary.copy(alpha = 0.3f),
                 contentColor = Color.White
             ),
             shape = RoundedCornerShape(28.dp),
-            enabled = titulo.isNotBlank()
+            enabled = camposCompletos
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))

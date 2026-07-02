@@ -4,9 +4,13 @@ import com.knexus.ergohabit.features.posture.data.datasource.api.AuthApi
 import com.knexus.ergohabit.features.posture.data.datasource.api.PosturaApi
 import com.knexus.ergohabit.features.posture.data.mapper.PostureMapper
 import com.knexus.ergohabit.features.posture.data.repository.AuthRepositoryImpl
+import com.knexus.ergohabit.features.posture.data.repository.NutricionRepositoryImpl
 import com.knexus.ergohabit.features.posture.data.repository.PostureRepositoryImpl
+import com.knexus.ergohabit.features.posture.data.repository.SuenoRepositoryImpl
 import com.knexus.ergohabit.features.posture.domain.repository.AuthRepository
+import com.knexus.ergohabit.features.posture.domain.repository.NutricionRepository
 import com.knexus.ergohabit.features.posture.domain.repository.PostureRepository
+import com.knexus.ergohabit.features.posture.domain.repository.SuenoRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -31,7 +35,30 @@ abstract class PostureModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
-    // ----------------------------------------------------------------------
+
+    @Binds
+    @Singleton
+    abstract fun bindAguaRepository(
+        aguaRepositoryImpl: com.knexus.ergohabit.features.posture.data.repository.AguaRepositoryImpl
+    ): com.knexus.ergohabit.features.posture.domain.repository.AguaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSuenoRepository(
+        suenoRepositoryImpl: SuenoRepositoryImpl
+    ): SuenoRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNutricionRepository(
+        nutricionRepositoryImpl: NutricionRepositoryImpl
+    ): NutricionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindEjercicioRepository(
+        ejercicioRepositoryImpl: com.knexus.ergohabit.features.posture.data.repository.EjercicioRepositoryImpl
+    ): com.knexus.ergohabit.features.posture.domain.repository.EjercicioRepository
 
     companion object {
         @Provides
@@ -49,6 +76,12 @@ abstract class PostureModule {
         @Singleton
         fun providePosturaApi(retrofit: Retrofit): PosturaApi {
             return retrofit.create(PosturaApi::class.java)
+        }
+
+        @Provides
+        @Singleton
+        fun provideAguaApi(retrofit: Retrofit): com.knexus.ergohabit.features.posture.data.datasource.api.AguaApi {
+            return retrofit.create(com.knexus.ergohabit.features.posture.data.datasource.api.AguaApi::class.java)
         }
     }
 }

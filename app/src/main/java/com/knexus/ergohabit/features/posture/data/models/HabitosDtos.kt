@@ -44,7 +44,10 @@ data class SuenoResponse(
     @SerializedName("horaDespertarConfigurada") val horaDespertarConfigurada: String,
     @SerializedName("porcentajeCumplimiento") val porcentajeCumplimiento: Int,
     @SerializedName("fraseMotivacional") val fraseMotivacional: String = "",
-    @SerializedName("tipsSueno") val tipsSueno: List<String> = emptyList()
+    @SerializedName("tipsSueno") val tipsSueno: List<String> = emptyList(),
+    val isAlarmActiveLocal: Boolean = false,
+    val isSoundEnabledLocal: Boolean = false,
+    val notificacionesHabilitadasLocal: Boolean = true
 )
 
 data class SuenoRequest(
@@ -124,4 +127,10 @@ data class ElementoGraficaPosturaDto(
     @SerializedName("diaSemana") val diaSemana: String,
     @SerializedName("totalAlertas") val totalAlertas: Int,
     @SerializedName("esHoy") val esHoy: Boolean
+)
+
+data class ErrorResponseDto(
+    @SerializedName("code") val code: String,
+    @SerializedName("message") val message: String,
+    @SerializedName("details") val details: String?
 )

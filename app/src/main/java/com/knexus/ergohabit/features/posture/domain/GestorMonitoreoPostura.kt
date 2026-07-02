@@ -42,22 +42,29 @@ class GestorMonitoreoPostura @Inject constructor(
     val estado: StateFlow<EstadoMonitoreoPostura> = _estado.asStateFlow()
 
     private var monitoreoJob: Job? = null
+    private var syncJob: Job? = null
     private var alertaActiva = false
     private var ultimoResultadoCamara: ResultadoPosturaCamara? = null
     private var ultimoSensorCorrecto = true
     private var ultimoPitch = 0.0
     private var ultimoRoll = 0.0
     private var lecturasMalasCamara = 0
+    private var ultimaAlertaSonora = 0L
 
     fun iniciar() {
         if (_estado.value.activo) return
         _estado.update { it.copy(activo = true, conteoAlertas = 0, mensaje = "Monitoreando...") }
         iniciarRecoleccion()
+        iniciarSincronizacionPeriodica()
     }
 
     fun detener() {
         monitoreoJob?.cancel()
         monitoreoJob = null
+        // Sincronización final antes de detener todo
+        scope.launch { postureRepository.sincronizarConServidor() }
+        syncJob?.cancel()
+        syncJob = null
         alertaActiva = false
         ultimoResultadoCamara = null
         lecturasMalasCamara = 0
@@ -78,6 +85,8 @@ class GestorMonitoreoPostura @Inject constructor(
     fun pausar() {
         monitoreoJob?.cancel()
         monitoreoJob = null
+        // Al pausar (salir de la app), enviamos lo acumulado de inmediato para que no se pierda
+        scope.launch { postureRepository.sincronizarConServidor() }
         alertaActiva = false
         gestorSonido.detenerSonido()
     }
@@ -85,6 +94,19 @@ class GestorMonitoreoPostura @Inject constructor(
     fun reanudar() {
         if (!_estado.value.activo || monitoreoJob?.isActive == true) return
         iniciarRecoleccion()
+        iniciarSincronizacionPeriodica()
+    }
+
+    private fun iniciarSincronizacionPeriodica() {
+        if (syncJob?.isActive == true) return
+        
+        syncJob = scope.launch {
+            while (true) {
+                // Sincronización cada 2 minutos para pruebas
+                kotlinx.coroutines.delay(20 * 60 * 1000)
+                postureRepository.sincronizarConServidor()
+            }
+        }
     }
 
     fun actualizarCamara(resultado: ResultadoPosturaCamara) {
@@ -153,22 +175,32 @@ class GestorMonitoreoPostura @Inject constructor(
             else -> "Postura Correcta"
         }
 
-        if (esIncorrecta && !alertaActiva) {
-            alertaActiva = true
-            gestorSonido.sonarAlerta()
-            _estado.update { it.copy(conteoAlertas = it.conteoAlertas + 1) }
-            scope.launch(Dispatchers.IO) {
-                postureRepository.enviarReportePostura(
-                    EntidadPostura(
-                        anguloPitch = ultimoPitch,
-                        anguloRoll = ultimoRoll,
-                        esCorrecta = false,
-                        mensaje = mensaje
+        if (esIncorrecta) {
+            if (!alertaActiva) {
+                alertaActiva = true
+                _estado.update { it.copy(conteoAlertas = it.conteoAlertas + 1) }
+                scope.launch(Dispatchers.IO) {
+                    postureRepository.guardarReporteLocal(
+                        EntidadPostura(
+                            anguloPitch = ultimoPitch,
+                            anguloRoll = ultimoRoll,
+                            esCorrecta = false,
+                            mensaje = mensaje
+                        )
                     )
-                )
+                }
+            }
+            
+            // Intervalo equilibrado (4 segundos) para que no sea acosador
+            val ahora = System.currentTimeMillis()
+            if (ahora - ultimaAlertaSonora > 4000) {
+                android.util.Log.d("GestorPostura", "Ejecutando alerta (intervalo 4s)")
+                gestorSonido.sonarAlerta()
+                ultimaAlertaSonora = ahora
             }
         } else if (!esIncorrecta && alertaActiva) {
             alertaActiva = false
+            ultimaAlertaSonora = 0L
             gestorSonido.detenerSonido()
         }
 

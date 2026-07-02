@@ -27,11 +27,21 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 fun CronometroSeccion(
     tarea: TareaEnfoque?,
     tiempoRestante: Int,
+    duracionSesionActual: Int,
     isRunning: Boolean,
     onToggleTimer: () -> Unit
 ) {
-    val totalSegundos = (tarea?.duracionMinutos ?: 45) * 60
+    val totalSegundos = if (duracionSesionActual > 0) duracionSesionActual else (tarea?.duracionMinutos ?: 45) * 60
     val progreso = if (totalSegundos > 0) tiempoRestante.toFloat() / totalSegundos else 0f
+
+    val totalMinutos = tiempoRestante / 60
+    val horas = totalMinutos / 60
+    val minsRestantes = totalMinutos % 60
+    val segundos = tiempoRestante % 60
+
+    // Ajuste dinámico de tamaño para evitar amontonamiento cuando hay horas
+    val containerSize = if (horas > 0) 240.dp else 210.dp
+    val canvasSize = if (horas > 0) 220.dp else 190.dp
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -43,7 +53,6 @@ fun CronometroSeccion(
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Título de la tarea y categoría
             if (tarea != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -82,12 +91,11 @@ fun CronometroSeccion(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Círculo de progreso
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(200.dp)
+                modifier = Modifier.size(containerSize)
             ) {
-                Canvas(modifier = Modifier.size(180.dp)) {
+                Canvas(modifier = Modifier.size(canvasSize)) {
                     drawArc(
                         color = BgMain,
                         startAngle = -90f,
@@ -97,7 +105,7 @@ fun CronometroSeccion(
                     )
                 }
                 
-                Canvas(modifier = Modifier.size(180.dp)) {
+                Canvas(modifier = Modifier.size(canvasSize)) {
                     drawArc(
                         color = MoradoAcento,
                         startAngle = -90f,
@@ -109,27 +117,31 @@ fun CronometroSeccion(
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "LISTO",
+                        text = "RESTANTE",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextGray,
                         letterSpacing = 1.sp
                     )
                     
-                    val minutos = tiempoRestante / 60
-                    val segundos = tiempoRestante % 60
-                    val tiempoTexto = "%02d:%02d".format(minutos, segundos)
+                    val tiempoTexto = if (horas > 0) {
+                        "%02d:%02d:%02d".format(horas, minsRestantes, segundos)
+                    } else {
+                        "%02d:%02d".format(minsRestantes, segundos)
+                    }
                     
                     Text(
                         text = tiempoTexto,
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        fontSize = if (horas > 0) 44.sp else 56.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary,
+                        lineHeight = 44.sp
                     )
                     
                     Text(
-                        text = "minutos",
+                        text = if (horas > 0) "hr : min : seg" else "minutos : seg",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextGray
+                        color = TextGray,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }

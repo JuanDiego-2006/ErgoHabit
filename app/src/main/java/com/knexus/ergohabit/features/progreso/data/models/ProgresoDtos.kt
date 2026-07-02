@@ -34,3 +34,18 @@ data class RegistroHabitoDto(
     @SerializedName("valor") val valor: Float,
     @SerializedName("es_meta_cumplida") val esMetaCumplida: Boolean
 )
+
+
+data class HabitoProgresoSemanalDto(
+    @SerializedName("tituloSeccion") val tituloSeccion: String? = null,
+    @SerializedName("mensajeMeta") val mensajeMeta: String,
+    @SerializedName("datosGrafica") val datosGrafica: List<DatoGraficaDto>
+)
+
+data class DatoGraficaDto(
+    @SerializedName("diaSemana") val diaSemana: String,
+    @SerializedName("valor") val valor: Float? = null,
+    @SerializedName("totalAlertas") val totalAlertas: Int? = null,
+    @SerializedName("metaCumplida") val metaCumplida: Boolean? = null,
+    @SerializedName("esHoy") val esHoy: Boolean
+)

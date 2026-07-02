@@ -2,7 +2,10 @@ package com.knexus.ergohabit.features.posture.presentation.viewmodel
 
 data class ConfigHorarioUiState(
     val horas: Int = 6,
-    val minutos: Int = 0
+    val minutos: Int = 0,
+    val isLoading: Boolean = false,
+    val successMessage: String? = null,
+    val error: String? = null
 ) {
     val horaDespertar: String get() = "${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}"
     val horaDormir: String get() {

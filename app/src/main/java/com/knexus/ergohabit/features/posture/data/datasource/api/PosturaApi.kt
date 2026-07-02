@@ -5,9 +5,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 
-/**
- * Interfaz de Retrofit para las peticiones de postura al servidor.
- */
+
 interface PosturaApi {
 
     @GET("api/v1/ergonomia/historial")

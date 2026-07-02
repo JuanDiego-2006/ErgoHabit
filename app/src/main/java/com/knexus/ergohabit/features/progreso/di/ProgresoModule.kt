@@ -1,9 +1,8 @@
 package com.knexus.ergohabit.features.progreso.di
 
-import com.knexus.ergohabit.features.progreso.data.datasource.api.ProgresoDiarioApi
+import com.knexus.ergohabit.features.progreso.data.datasource.api.ProgresoApi
 import com.knexus.ergohabit.features.progreso.data.repositories.ProgresoRepositoryImpl
 import com.knexus.ergohabit.features.progreso.domain.repositories.ProgresoRepository
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,17 +12,20 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class ProgresoModule {
+object ProgresoModule {
 
-    @Binds
+    @Provides
     @Singleton
-    abstract fun bindProgresoRepository(impl: ProgresoRepositoryImpl): ProgresoRepository
+    fun provideProgresoApi(retrofit: Retrofit): ProgresoApi {
+        return retrofit.create(ProgresoApi::class.java)
+    }
 
-    companion object {
-        @Provides
-        @Singleton
-        fun provideProgresoDiarioApi(retrofit: Retrofit): ProgresoDiarioApi {
-            return retrofit.create(ProgresoDiarioApi::class.java)
-        }
+    @Provides
+    @Singleton
+    fun provideProgresoRepository(
+        api: ProgresoApi,
+        dao: com.knexus.ergohabit.core.database.dao.ProgresoDao
+    ): ProgresoRepository {
+        return ProgresoRepositoryImpl(api, dao)
     }
 }
