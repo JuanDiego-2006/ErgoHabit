@@ -24,6 +24,7 @@ object ApiErrorParser {
                 400 -> "Datos inválidos. Revisa título, categoría y duración (mínimo 20 min)."
                 401 -> "Sesión expirada. Vuelve a iniciar sesión."
                 403 -> "No tienes permiso para esta acción."
+                500 -> "Error del servidor al procesar la solicitud."
                 else -> "Error del servidor (${error.code()})"
             }
         }

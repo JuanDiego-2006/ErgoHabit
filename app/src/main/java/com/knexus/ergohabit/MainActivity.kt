@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_ErgoHabit)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         permisoCamaraState.value = tienePermisoCamara()

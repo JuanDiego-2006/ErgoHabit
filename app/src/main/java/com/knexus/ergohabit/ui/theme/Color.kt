@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 
 val BgMain         = Color(0xFFF0F5F0)
 val BgWhite        = Color(0xFFFFFFFF)
+val BrandNavy      = Color(0xFF1B2430)
+val BrandMint      = Color(0xFF5ECEB3)
 val GreenPrimary   = Color(0xFF2E7D52)
 val GreenLight     = Color(0xFFE8F5EC)
 val GreenProgress  = Color(0xFF34C97A)
