@@ -11,4 +11,5 @@ interface AguaRepository {
     suspend fun configurarMetaManual(metaMl: Int): Result<String>
     suspend fun configurarMetaPeso(peso: Double, estatura: Double): Result<String>
     suspend fun getProgresoSemanal(): Result<RegistroSemanalAgua>
+    suspend fun toggleNotificaciones(activa: Boolean)
 }

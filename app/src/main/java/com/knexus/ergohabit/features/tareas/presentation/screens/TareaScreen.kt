@@ -35,6 +35,18 @@ fun TareaScreen(
     val uiState by viewModel.uiState.collectAsState()
     val sheetState = rememberModalBottomSheetState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+
+    // --- REFRESCAR AL VOLVER A LA APP (Sincronización de segundos) ---
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadTareas() // Esto recalcula los segundos inmediatamente
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // --- MANEJO DE INTENT DE NOTIFICACIÓN ---
     LaunchedEffect(notificationIntent) {
@@ -45,7 +57,6 @@ fun TareaScreen(
             val tareaCompletadaId = intent.getIntExtra("tareaCompletadaId", -1)
 
             if (idTareaAlerta != -1) {
-                // Prioridad a la alerta de salud
                 viewModel.mostrarAlertaDesdeNotificacion(
                     frase ?: "¡Momento de salud! 🧘",
                     accion ?: "Es hora de estirar",

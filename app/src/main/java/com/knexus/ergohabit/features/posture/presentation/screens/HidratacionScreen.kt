@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -138,7 +140,7 @@ fun HidratacionScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "MICRO-HÁBITO",
                         fontSize = 10.sp,
@@ -280,6 +282,17 @@ fun HidratacionScreen(
                         .background(Color.White)
                         .padding(20.dp)
                 ) {
+                    // Botón de notificaciones (Campana) en la esquina del card
+                    Icon(
+                        imageVector = if (state.notificacionesActivas) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff,
+                        contentDescription = "Notificaciones",
+                        tint = if (state.notificacionesActivas) Color(0xFF6A5AE0) else Color.Gray,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(22.dp)
+                            .clickable { viewModel.toggleNotificaciones() }
+                    )
+
                     Column {
                         Text(
                             text = "Registro Rápido",

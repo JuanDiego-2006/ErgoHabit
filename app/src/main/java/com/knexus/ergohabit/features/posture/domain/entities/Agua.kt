@@ -10,7 +10,8 @@ data class DashboardAgua(
     val pesoActual: Double,
     val historialHoy: List<TomaAgua>,
     val fraseMotivacional: String,
-    val tipsHidratacion: List<String>
+    val tipsHidratacion: List<String>,
+    val notificacionesActivas: Boolean = true
 )
 
 data class TomaAgua(

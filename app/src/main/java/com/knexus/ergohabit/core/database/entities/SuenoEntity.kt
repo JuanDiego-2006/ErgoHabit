@@ -5,7 +5,8 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "sueno_dashboard")
 data class SuenoEntity(
-    @PrimaryKey val id: Int = 1, // Solo guardamos un dashboard (el del usuario actual)
+    @PrimaryKey val id: Int = 1,
+    val userId: Int,
     val horasPlanificadas: Int,
     val horasDormidasReales: Double,
     val despertoATiempo: Boolean,
@@ -13,5 +14,8 @@ data class SuenoEntity(
     val horaDespertarConfigurada: String,
     val porcentajeCumplimiento: Int,
     val fraseMotivacional: String,
+    val isAlarmActive: Boolean = false,
+    val isSoundEnabled: Boolean = false,
+    val notificacionesHabilitadas: Boolean = true, // NUEVO: Control maestro
     val lastUpdated: Long = System.currentTimeMillis()
 )

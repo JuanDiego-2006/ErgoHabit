@@ -5,9 +5,8 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knexus.ergohabit.core.hardware.domain.SensorEjercicio
-import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
-import com.knexus.ergohabit.features.posture.data.models.RegistrarKmRequest
 import com.knexus.ergohabit.features.posture.domain.GestorEjercicio
+import com.knexus.ergohabit.features.posture.domain.repository.EjercicioRepository
 import com.knexus.ergohabit.features.posture.presentation.services.StepCounterService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +20,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ActividadViewModel @Inject constructor(
-    private val api: HabitosApi,
+    private val repository: EjercicioRepository,
     private val sensorEjercicio: SensorEjercicio,
     private val gestorEjercicio: GestorEjercicio,
     @ApplicationContext private val context: Context
@@ -30,13 +29,13 @@ class ActividadViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ActividadUiState())
     val uiState: StateFlow<ActividadUiState> = _uiState.asStateFlow()
 
-    private var sensorJob: Job? = null
+    private var dashboardJob: Job? = null
 
     init {
         _uiState.update {
             it.copy(sensorDisponible = sensorEjercicio.estaDisponible())
         }
-        cargarDashboard()
+        observarDashboard()
         observarGestor()
     }
 
@@ -58,30 +57,32 @@ class ActividadViewModel @Inject constructor(
         }
     }
 
-    private fun cargarDashboard() {
-        viewModelScope.launch {
+    private fun observarDashboard() {
+        dashboardJob?.cancel()
+        dashboardJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            try {
-                val respuesta = api.obtenerDashboardEjercicio()
-                val kmActuales = parseKmNumerico(respuesta.kmRecorridosText) ?: 0f
-                val kmObjetivo = parseKmNumerico(respuesta.metaKmText) ?: 8f
+            repository.getDashboardEjercicio().collect { resultado ->
+                resultado.onSuccess { respuesta ->
+                    val kmActuales = parseKmNumerico(respuesta.kmRecorridosText) ?: 0f
+                    val kmObjetivo = parseKmNumerico(respuesta.metaKmText) ?: 0f
 
-                _uiState.update {
-                    it.copy(
-                        kmActuales = kmActuales,
-                        kmObjetivo = kmObjetivo,
-                        calorias = respuesta.caloriasQuemadas,
-                        rachasDias = respuesta.rachaDias,
-                        mensajeFaltante = respuesta.mensajeFaltanteText,
-                        sugerencia = respuesta.sugerenciaCaminataText,
-                        fraseMotivacional = respuesta.fraseMotivacional,
-                        porcentajeBackend = respuesta.porcentajeCumplimiento,
-                        isLoading = false,
-                        isRegistrando = false
-                    )
+                    _uiState.update {
+                        it.copy(
+                            kmActuales = kmActuales,
+                            kmObjetivo = kmObjetivo,
+                            calorias = respuesta.caloriasQuemadas,
+                            rachasDias = respuesta.rachaDias,
+                            mensajeFaltante = respuesta.mensajeFaltanteText,
+                            sugerencia = respuesta.sugerenciaCaminataText,
+                            fraseMotivacional = respuesta.fraseMotivacional,
+                            porcentajeBackend = respuesta.porcentajeCumplimiento,
+                            isLoading = false,
+                            isRegistrando = false
+                        )
+                    }
+                }.onFailure {
+                    _uiState.update { it.copy(isLoading = false, isRegistrando = false) }
                 }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isLoading = false, isRegistrando = false) }
             }
         }
     }
@@ -111,18 +112,23 @@ class ActividadViewModel @Inject constructor(
 
     fun sincronizarSesion() {
         val km = _uiState.value.kmSesion.toDouble()
+        
+        // Validación local con mensaje descriptivo
         if (km < 0.01) {
-            _uiState.update { it.copy(errorSensor = "Camina un poco más antes de guardar.") }
+            _uiState.update { 
+                it.copy(errorSensor = "¡Sigue así! Necesitas acumular al menos 10 metros para guardar tu progreso. 🚶") 
+            }
             return
         }
+
         val estabaActivo = _uiState.value.sensorActivo
         registrarKm(km) {
+            // El reinicio del Gestor solo ocurre si el registro fue exitoso
+            gestorEjercicio.reiniciar()
+            
             if (estabaActivo) {
                 detenerSensor()
-                gestorEjercicio.reiniciar()
                 iniciarSensor()
-            } else {
-                gestorEjercicio.reiniciar()
             }
             _uiState.update { it.copy(pasosSesion = 0, kmSesion = 0f, errorSensor = null) }
         }
@@ -138,40 +144,36 @@ class ActividadViewModel @Inject constructor(
         _uiState.update { it.copy(errorSensor = null) }
     }
 
-    private fun reiniciarSensor() {
-        detenerSensor()
-        iniciarSensor()
-    }
-
     private fun registrarKm(km: Double, onExito: () -> Unit = {}) {
         if (_uiState.value.isRegistrando) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isRegistrando = true) }
-            try {
-                api.registrarKilometros(RegistrarKmRequest(km = km))
+            _uiState.update { it.copy(isRegistrando = true, errorSensor = null) }
+            repository.registrarKilometros(km).onSuccess {
                 onExito()
-                cargarDashboard()
-            } catch (_: Exception) {
+                _uiState.update { it.copy(isRegistrando = false) }
+            }.onFailure { error ->
+                val mensajeError = error.message ?: "No se pudo guardar el progreso. Revisa tu conexión."
                 _uiState.update {
                     it.copy(
                         isRegistrando = false,
-                        errorSensor = "No se pudo guardar el progreso. Revisa tu conexión."
+                        errorSensor = if (mensajeError.contains("400")) 
+                            "La cantidad es muy pequeña para el servidor. Camina un poco más." 
+                            else mensajeError
                     )
                 }
             }
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-    }
-
     private fun parseKmNumerico(texto: String): Float? {
-        return texto
-            .substringAfter("de ", texto)
+        // Limpiamos cualquier carácter no numérico excepto el punto y la coma
+        val limpio = texto
+            .replace("de ", "", ignoreCase = true)
             .replace(" km", "", ignoreCase = true)
             .replace(",", ".")
+            .filter { it.isDigit() || it == '.' }
             .trim()
-            .toFloatOrNull()
+        
+        return limpio.toFloatOrNull()
     }
 }

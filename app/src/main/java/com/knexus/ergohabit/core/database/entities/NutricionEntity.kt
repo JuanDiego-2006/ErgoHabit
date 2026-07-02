@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "nutricion_config")
 data class NutricionEntity(
     @PrimaryKey val id: Int = 1,
+    val userId: Int, // Relación con el usuario (lógica)
     val horaDesayuno: String,
     val horaComida: String,
     val horaCena: String,

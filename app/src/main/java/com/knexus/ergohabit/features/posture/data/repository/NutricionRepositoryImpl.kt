@@ -2,6 +2,7 @@ package com.knexus.ergohabit.features.posture.data.repository
 
 import com.knexus.ergohabit.core.database.dao.NutricionDao
 import com.knexus.ergohabit.core.database.entities.NutricionEntity
+import com.knexus.ergohabit.core.session.SessionManager
 import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
 import com.knexus.ergohabit.features.posture.data.models.ConfigurarNutricionRequest
 import com.knexus.ergohabit.features.posture.data.models.MarcarComidaRequest
@@ -9,88 +10,72 @@ import com.knexus.ergohabit.features.posture.data.models.NutricionDashboardRespo
 import com.knexus.ergohabit.features.posture.data.models.ErrorResponseDto
 import com.knexus.ergohabit.features.posture.domain.repository.NutricionRepository
 import com.google.gson.Gson
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
 
 class NutricionRepositoryImpl @Inject constructor(
     private val api: HabitosApi,
-    private val dao: NutricionDao
+    private val dao: NutricionDao,
+    private val sessionManager: SessionManager
 ) : NutricionRepository {
 
     private val gson = Gson()
 
-    override fun getNutricionDashboard(): Flow<Result<NutricionDashboardResponse>> = flow {
-        val localFlow = dao.getNutricionConfig().map { entity ->
-            if (entity != null) {
-                Result.success(NutricionDashboardResponse(
-                    comidasCompletadasText = "",
-                    porcentajeCumplimiento = 0,
-                    mensajeFaltanteText = "",
-                    horaDesayunoConfigurada = entity.horaDesayuno,
-                    horaComidaConfigurada = entity.horaComida,
-                    horaCenaConfigurada = entity.horaCena,
-                    chequeoDesayuno = entity.chequeoDesayuno,
-                    chequeoComida = entity.chequeoComida,
-                    chequeoCena = entity.chequeoCena
-                ))
-            } else null
+    override fun getNutricionDashboard(): Flow<Result<NutricionDashboardResponse>> = channelFlow {
+        // 1. OBSERVACIÓN INFINITA: Sincronización inmediata con Room
+        launch {
+            dao.getNutricionConfig().collect { local ->
+                if (local != null) {
+                    val completadas = listOf(local.chequeoDesayuno, local.chequeoComida, local.chequeoCena).count { it }
+                    val pct = ((completadas / 3.0) * 100).toInt()
+                    
+                    send(Result.success(NutricionDashboardResponse(
+                        comidasCompletadasText = "$completadas / 3 comidas", 
+                        porcentajeCumplimiento = pct,
+                        mensajeFaltanteText = if (completadas == 3) "¡Meta cumplida!" else "Te faltan ${3 - completadas} comidas",
+                        horaDesayunoConfigurada = local.horaDesayuno,
+                        horaComidaConfigurada = local.horaComida,
+                        horaCenaConfigurada = local.horaCena,
+                        chequeoDesayuno = local.chequeoDesayuno,
+                        chequeoComida = local.chequeoComida,
+                        chequeoCena = local.chequeoCena
+                    )))
+                }
+            }
         }
 
+        // 2. ACTUALIZACIÓN DE RED
         try {
             val response = api.obtenerDashboardNutricion()
-            dao.insertNutricionConfig(NutricionEntity(
-                horaDesayuno = normalizarA24h(response.horaDesayunoConfigurada),
-                horaComida = normalizarA24h(response.horaComidaConfigurada),
-                horaCena = normalizarA24h(response.horaCenaConfigurada),
-                chequeoDesayuno = response.chequeoDesayuno,
-                chequeoComida = response.chequeoComida,
-                chequeoCena = response.chequeoCena
-            ))
-            emit(Result.success(response))
-        } catch (e: Exception) {
-            emitAll(localFlow.map { it ?: Result.failure(e) })
-        }
-    }
-
-    private fun normalizarA24h(hora: String): String {
-        if (hora.isBlank() || hora == "--:--" || hora == "Sin establecer" || hora == "00:00") return ""
-        val clean = hora.trim().uppercase()
-        if (!clean.contains("AM") && !clean.contains("PM")) {
-            return try {
-                val partes = clean.split(" ")[0].split(":")
-                val h = partes[0].toInt()
-                val m = partes.getOrNull(1)?.take(2) ?: "00"
-                String.format(java.util.Locale.ROOT, "%02d:%s", h, m)
-            } catch (e: Exception) { clean.take(5) }
-        }
-        return try {
-            val partes = clean.split(" ")
-            val tiempo = partes[0]
-            val ampm = partes.getOrNull(1) ?: ""
-            val clockPartes = tiempo.split(":")
-            var h = clockPartes[0].toInt()
-            val m = clockPartes[1].take(2)
-            if (ampm == "PM" && h < 12) h += 12
-            if (ampm == "AM" && h == 12) h = 0
-            String.format(java.util.Locale.ROOT, "%02d:%s", h, m)
-        } catch (e: Exception) { clean.take(5) }
+            val userId = sessionManager.fetchUserId()
+            if (userId != -1) {
+                dao.insertNutricionConfig(NutricionEntity(
+                    userId = userId,
+                    horaDesayuno = response.horaDesayunoConfigurada,
+                    horaComida = response.horaComidaConfigurada,
+                    horaCena = response.horaCenaConfigurada,
+                    chequeoDesayuno = response.chequeoDesayuno,
+                    chequeoComida = response.chequeoComida,
+                    chequeoCena = response.chequeoCena
+                ))
+            }
+        } catch (_: Exception) {}
     }
 
     override suspend fun configurarHorarios(desayuno: String, comida: String, cena: String): Result<String> {
         return try {
             val response = api.configurarHorariosNutricion(ConfigurarNutricionRequest(desayuno, comida, cena))
-            
-            // Actualización local para que la UI responda instantáneamente
-            dao.insertNutricionConfig(NutricionEntity(
-                horaDesayuno = desayuno,
-                horaComida = comida,
-                horaCena = cena
-            ))
-
+            val userId = sessionManager.fetchUserId()
+            if (userId != -1) {
+                dao.insertNutricionConfig(NutricionEntity(
+                    userId = userId,
+                    horaDesayuno = desayuno,
+                    horaComida = comida,
+                    horaCena = cena
+                ))
+            }
             Result.success(response.mensaje)
         } catch (e: Exception) {
             parseError(e)
@@ -100,6 +85,14 @@ class NutricionRepositoryImpl @Inject constructor(
     override suspend fun marcarComida(tipo: String, estado: Boolean): Result<String> {
         return try {
             val response = api.marcarComida(MarcarComidaRequest(tipo, estado))
+            val current = dao.getNutricionConfig().firstOrNull()
+            if (current != null) {
+                dao.insertNutricionConfig(current.copy(
+                    chequeoDesayuno = if (tipo == "DESAYUNO") estado else current.chequeoDesayuno,
+                    chequeoComida = if (tipo == "COMIDA") estado else current.chequeoComida,
+                    chequeoCena = if (tipo == "CENA") estado else current.chequeoCena
+                ))
+            }
             Result.success(response.mensaje)
         } catch (e: Exception) {
             parseError(e)

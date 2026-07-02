@@ -7,7 +7,8 @@ import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.knexus.ergohabit.features.posture.domain.repository.SuenoRepository
+import com.knexus.ergohabit.features.posture.domain.usecase.ConfigurarHorarioSuenoUseCase
+import com.knexus.ergohabit.features.posture.domain.usecase.GetSuenoDashboardUseCase
 import com.knexus.ergohabit.features.posture.presentation.receiver.SuenoReceiver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,11 +18,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
 class ConfigHorarioViewModel @Inject constructor(
-    private val repository: SuenoRepository,
+    private val getSuenoDashboardUseCase: GetSuenoDashboardUseCase,
+    private val configurarHorarioSuenoUseCase: ConfigurarHorarioSuenoUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -34,11 +37,11 @@ class ConfigHorarioViewModel @Inject constructor(
 
     private fun cargarHorarioActual() {
         viewModelScope.launch {
-            repository.getSuenoDashboard().collect { result ->
+            getSuenoDashboardUseCase().collect { result ->
                 result.onSuccess { dashboard ->
                     val partes = dashboard.horaDespertarConfigurada.split(":")
                     val horas = partes.getOrNull(0)?.toIntOrNull() ?: 6
-                    val minutos = partes.getOrNull(1)?.toIntOrNull() ?: 0
+                    val minutos = partes.getOrNull(1)?.take(2)?.toIntOrNull() ?: 0
                     _uiState.update { it.copy(horas = horas, minutos = minutos) }
                 }
             }
@@ -65,7 +68,7 @@ class ConfigHorarioViewModel @Inject constructor(
         viewModelScope.launch {
             val estado = _uiState.value
             _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
-            repository.configurarHorario(estado.horaDespertar, estado.horaDormir)
+            configurarHorarioSuenoUseCase(estado.horaDespertar, estado.horaDormir)
                 .onSuccess { msg ->
                     _uiState.update { it.copy(isLoading = false, successMessage = msg) }
                     programarAlarmas(estado.horaDormir, estado.horaDespertar)
@@ -85,7 +88,7 @@ class ConfigHorarioViewModel @Inject constructor(
     private fun programarAlarma(alarmManager: AlarmManager, horaString: String, offsetMinutos: Int, tipo: String, requestCode: Int) {
         val partes = horaString.split(":")
         val h = partes.getOrNull(0)?.toIntOrNull() ?: return
-        val m = partes.getOrNull(1)?.toIntOrNull() ?: return
+        val m = partes.getOrNull(1)?.take(2)?.toIntOrNull() ?: return
 
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, h)

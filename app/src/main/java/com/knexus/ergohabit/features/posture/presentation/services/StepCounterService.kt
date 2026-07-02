@@ -8,9 +8,8 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.knexus.ergohabit.core.hardware.domain.SensorEjercicio
-import com.knexus.ergohabit.features.posture.data.datasource.api.HabitosApi
-import com.knexus.ergohabit.features.posture.data.models.RegistrarKmRequest
 import com.knexus.ergohabit.features.posture.domain.GestorEjercicio
+import com.knexus.ergohabit.features.posture.domain.repository.EjercicioRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +29,7 @@ class StepCounterService : Service() {
     lateinit var gestorEjercicio: GestorEjercicio
 
     @Inject
-    lateinit var api: HabitosApi
+    lateinit var repository: EjercicioRepository
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var sensorJob: Job? = null
@@ -85,11 +84,10 @@ class StepCounterService : Service() {
                 val kmParaEnviar = gestorEjercicio.datosPasos.value.km
 
                 if (kmParaEnviar > 0.05) { // Solo enviamos si caminó al menos 50 metros
-                    try {
-                        api.registrarKilometros(RegistrarKmRequest(km = kmParaEnviar))
+                    repository.registrarKilometros(kmParaEnviar).onSuccess {
                         // Si el envío es exitoso, reiniciamos el contador local de la sesión
                         gestorEjercicio.reiniciar()
-                    } catch (e: Exception) {
+                    }.onFailure {
                         // Si falla (sin internet), no reiniciamos.
                         // Se acumulará para el siguiente intento en 2 horas.
                     }

@@ -4,13 +4,15 @@ data class SuenoUiState(
     val horasDormidas: Float = 0f,
     val horasRecomendadas: Float = 8f,
     val calidad: String = "—",
-    val horaDormir: String = "--:--",
-    val horaDespertar: String = "--:--",
+    val horaDormir: String = "",
+    val horaDespertar: String = "",
     val alarmaActivada: Boolean = false,
     val fraseMotivacional: String = "",
     val tips: List<String> = emptyList(),
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val mostrarAlarma: Boolean = false,
+    val reproducirSonido: Boolean = false,
+    val notificacionesHabilitadas: Boolean = true, // NUEVO
     val successMessage: String? = null,
     val error: String? = null
 ) {

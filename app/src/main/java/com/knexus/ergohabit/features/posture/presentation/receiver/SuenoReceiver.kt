@@ -7,13 +7,17 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import com.knexus.ergohabit.MainActivity
 import com.knexus.ergohabit.core.database.dao.SuenoDao
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -31,16 +35,54 @@ class SuenoReceiver : BroadcastReceiver() {
             return
         }
 
+        if (intent.action == "com.knexus.ergohabit.SILENCIAR_ALARMA") {
+            CoroutineScope(Dispatchers.IO).launch {
+                suenoDao.setSoundStatus(false)
+            }
+            return
+        }
+
         val tipo = intent.getStringExtra("tipo") ?: return
-        // ... (resto del código de notificación se mantiene igual)
+        
+        // Verificamos si las notificaciones están habilitadas globalmente antes de hacer nada
+        val resultAsync = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val entity = suenoDao.getSuenoDashboard().first()
+                if (entity?.notificacionesHabilitadas == false) return@launch
+
+                // PERSISTENCIA: Si es alarma de despertar, marcamos en Room que está activa
+                if (tipo == "ALARMA_DESPERTAR") {
+                    suenoDao.updateAlarmStatus(true)
+                }
+
+                // Mostrar la alerta (debe ejecutarse en el Main o usar el contexto original)
+                mostrarAlertaSueno(context, tipo)
+            } finally {
+                resultAsync.finish()
+            }
+        }
+    }
+
+    private fun mostrarAlertaSueno(context: Context, tipo: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "sueno_notifications"
+        val channelId = if (tipo == "ALARMA_DESPERTAR") "sueno_alarma_insistente" else "sueno_recordatorio_v3"
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Notificaciones de Sueño"
+            val name = if (tipo == "ALARMA_DESPERTAR") "Alarma de Despertar" else "Recordatorios de Sueño"
             val channel = NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Recordatorios para dormir y despertar"
+                description = "Alertas de sueño de ErgoHabit"
                 enableVibration(true)
+                // Para el recordatorio de 6s, silenciamos el canal porque lo manejamos manualmente
+                if (tipo == "RECORDATORIO_DORMIR") {
+                    setSound(null, null)
+                } else {
+                    setSound(alarmUri, android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build())
+                }
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -53,6 +95,13 @@ class SuenoReceiver : BroadcastReceiver() {
                 putExtra("mostrarAlarmaSueno", true)
             }
         }
+
+        val deleteIntent = Intent(context, SuenoReceiver::class.java).apply {
+            action = "com.knexus.ergohabit.SILENCIAR_ALARMA"
+        }
+        val deletePendingIntent = PendingIntent.getBroadcast(
+            context, 202, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val pendingIntent = PendingIntent.getActivity(
             context, 
@@ -70,15 +119,14 @@ class SuenoReceiver : BroadcastReceiver() {
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(true)
+            .setDeleteIntent(deletePendingIntent)
             .setContentIntent(pendingIntent)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setSound(if (tipo == "RECORDATORIO_DORMIR") null else alarmUri) // Silenciamos solo el recordatorio de 6s
             .apply {
                 if (tipo == "ALARMA_DESPERTAR") {
                     setFullScreenIntent(pendingIntent, true)
                     setOngoing(true)
-                    // Sonido y vibración infinitos hasta que se abra
-                    val alarmSound = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
-                    setSound(alarmSound)
                 }
             }
             .build().apply {
@@ -88,6 +136,39 @@ class SuenoReceiver : BroadcastReceiver() {
             }
 
         notificationManager.notify(if (tipo == "RECORDATORIO_DORMIR") 200 else 201, notification)
+
+        // Lógica de sonido largo de ALARMA (solo para recordatorio de dormir)
+        // La alarma de despertar ya es insistente por FLAG_INSISTENT y seguirá hasta pulsar botón.
+        if (tipo == "RECORDATORIO_DORMIR") {
+            val result = goAsync()
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    val ringtone = RingtoneManager.getRingtone(context, uri).apply {
+                        audioAttributes = android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    }
+                    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                    
+                    ringtone?.play()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
+                    } else {
+                        vibrator.vibrate(longArrayOf(0, 500, 500), 0)
+                    }
+
+                    delay(6000) // Suena por 6 segundos
+                    
+                    ringtone?.stop()
+                    vibrator.cancel()
+                } catch (e: Exception) {
+                } finally {
+                    result.finish()
+                }
+            }
+        }
     }
 
     private fun reprogramarAlarmas(context: Context) {
@@ -96,11 +177,7 @@ class SuenoReceiver : BroadcastReceiver() {
             val entity = suenoDao.getSuenoDashboard().first()
             if (entity != null) {
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                
-                // Programar Dormir (-5 min)
                 programar(context, alarmManager, entity.horaDormirConfigurada, -5, "RECORDATORIO_DORMIR", 200)
-                
-                // Programar Despertar (0 offset)
                 programar(context, alarmManager, entity.horaDespertarConfigurada, 0, "ALARMA_DESPERTAR", 201)
             }
         }

@@ -14,4 +14,13 @@ interface SuenoDao {
 
     @Query("DELETE FROM sueno_dashboard")
     suspend fun clearSuenoDashboard()
+
+    @Query("UPDATE sueno_dashboard SET isAlarmActive = :active, isSoundEnabled = :active WHERE id = 1")
+    suspend fun updateAlarmStatus(active: Boolean)
+
+    @Query("UPDATE sueno_dashboard SET isSoundEnabled = :enabled WHERE id = 1")
+    suspend fun setSoundStatus(enabled: Boolean)
+
+    @Query("UPDATE sueno_dashboard SET notificacionesHabilitadas = :habilitadas WHERE id = 1")
+    suspend fun setNotificacionesStatus(habilitadas: Boolean)
 }

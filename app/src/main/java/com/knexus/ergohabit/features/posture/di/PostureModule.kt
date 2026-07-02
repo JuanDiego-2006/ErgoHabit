@@ -54,6 +54,12 @@ abstract class PostureModule {
         nutricionRepositoryImpl: NutricionRepositoryImpl
     ): NutricionRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindEjercicioRepository(
+        ejercicioRepositoryImpl: com.knexus.ergohabit.features.posture.data.repository.EjercicioRepositoryImpl
+    ): com.knexus.ergohabit.features.posture.domain.repository.EjercicioRepository
+
     companion object {
         @Provides
         @Singleton

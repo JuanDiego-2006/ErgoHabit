@@ -7,7 +7,8 @@ import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.knexus.ergohabit.features.posture.domain.repository.NutricionRepository
+import com.knexus.ergohabit.features.posture.domain.usecase.ConfigurarHorariosNutricionUseCase
+import com.knexus.ergohabit.features.posture.domain.usecase.GetNutricionDashboardUseCase
 import com.knexus.ergohabit.features.posture.presentation.receiver.NutricionReceiver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,7 +23,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ConfigNutricionViewModel @Inject constructor(
-    private val repository: NutricionRepository,
+    private val getNutricionDashboardUseCase: GetNutricionDashboardUseCase,
+    private val configurarHorariosNutricionUseCase: ConfigurarHorariosNutricionUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -35,7 +37,7 @@ class ConfigNutricionViewModel @Inject constructor(
 
     private fun cargarHorarios() {
         viewModelScope.launch {
-            repository.getNutricionDashboard().collect { result ->
+            getNutricionDashboardUseCase().collect { result ->
                 result.onSuccess { dashboard ->
                     _uiState.update {
                         it.copy(
@@ -74,14 +76,14 @@ class ConfigNutricionViewModel @Inject constructor(
             comidaEditando = comida,
             emojiEditando = emoji,
             error = null,
-            horaTemp = if (horaActual == "00:00" || horaActual.isBlank()) {
+            horaTemp = normalizarA24h(horaActual).ifBlank {
                 when(comida) {
                     "Desayuno" -> "07:30"
                     "Comida" -> "14:30"
                     "Cena" -> "20:30"
                     else -> "08:00"
                 }
-            } else normalizarA24h(horaActual)
+            }
         ) }
     }
 
@@ -97,14 +99,13 @@ class ConfigNutricionViewModel @Inject constructor(
         val s = _uiState.value
         val nueva = normalizarA24h(s.horaTemp)
         
-        // Sincronización robusta: Si es la primera vez, autocompletamos con valores válidos
         val d = if (s.comidaEditando == "Desayuno") nueva else normalizarA24h(s.horaDesayuno).ifBlank { "07:30" }
         val c = if (s.comidaEditando == "Comida") nueva else normalizarA24h(s.horaComida).ifBlank { "14:30" }
         val ce = if (s.comidaEditando == "Cena") nueva else normalizarA24h(s.horaCena).ifBlank { "20:30" }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
-            repository.configurarHorarios(d, c, ce)
+            configurarHorariosNutricionUseCase(d, c, ce)
                 .onSuccess { msg ->
                     _uiState.update { it.copy(
                         isLoading = false,

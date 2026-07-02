@@ -45,7 +45,7 @@ fun ConfigHorarioScreen(
         state.successMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessages()
-            onGuardar()
+            // Se eliminó onGuardar() para evitar el regreso automático
         }
     }
 
@@ -306,7 +306,7 @@ fun ConfigHorarioScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Guardar y continuar",
+                                text = "Guardar",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White
@@ -364,9 +364,9 @@ private fun formatearParaDisplay(horario: String): String {
     
     val clean = horario.trim().uppercase()
     
-    // Si ya tiene AM/PM, lo respetamos pero corregimos el 00:00 AM -> 12:00 AM
+    // Si ya tiene AM/PM, lo respetamos pero corregimos el 00:00 -> 12:00
     if (clean.contains("AM") || clean.contains("PM")) {
-        return if (clean.startsWith("00:00")) clean.replace("00:00", "12:00") else horario
+        return if (clean.startsWith("00:00")) clean.replace("00:00", "12:00") else clean
     }
     
     // Si es formato 24h (HH:mm)
@@ -377,7 +377,7 @@ private fun formatearParaDisplay(horario: String): String {
         val suffix = if (h >= 12) "PM" else "AM"
         if (h > 12) h -= 12
         if (h == 0) h = 12
-        String.format(java.util.Locale.getDefault(), "%d:%02d %s", h, m, suffix)
+        String.format(java.util.Locale.getDefault(), "%02d:%02d %s", h, m, suffix)
     } catch (e: Exception) {
         horario
     }

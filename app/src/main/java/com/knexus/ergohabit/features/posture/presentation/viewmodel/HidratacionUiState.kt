@@ -25,7 +25,8 @@ data class HidratacionUiState(
     val metaManualTemporal: Int = 2000,
     val customAmountTemporal: Int = 250,
     val fraseMotivacional: String = "¡Mantente hidratado hoy!",
-    val tipsHidratacion: List<String> = emptyList()
+    val tipsHidratacion: List<String> = emptyList(),
+    val notificacionesActivas: Boolean = true
 ) {
     // --- CAMBIO: Tope de porcentaje al 100% (1.0f) ---
     val porcentaje: Float get() = if (mlObjetivo > 0) (mlActuales / mlObjetivo.toFloat()).coerceAtMost(1f) else 0f

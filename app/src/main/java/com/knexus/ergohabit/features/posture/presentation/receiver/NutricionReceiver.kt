@@ -7,13 +7,18 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import com.knexus.ergohabit.MainActivity
 import com.knexus.ergohabit.core.database.dao.NutricionDao
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -32,14 +37,21 @@ class NutricionReceiver : BroadcastReceiver() {
         }
 
         val tipo = intent.getStringExtra("tipoComida") ?: return
+        mostrarNotificacionConSonidoLargo(context, tipo)
+    }
+
+    private fun mostrarNotificacionConSonidoLargo(context: Context, tipo: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "nutricion_notifications"
+        val channelId = "nutricion_recordatorio_v3" // Nuevo ID para asegurar silencio en el canal
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Notificaciones de Nutrición"
+            val name = "Recordatorios de Comida"
             val channel = NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Recordatorios de comida"
+                description = "Alertas de nutrición de ErgoHabit"
                 enableVibration(true)
+                // HACEMOS EL CANAL SILENCIOSO porque el sonido lo manejaremos manualmente por 6s
+                setSound(null, null)
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -62,10 +74,52 @@ class NutricionReceiver : BroadcastReceiver() {
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(true)
+            .setSound(null) // Notificación silenciosa
             .setContentIntent(pendingIntent)
             .build()
 
         notificationManager.notify(tipo.hashCode(), notification)
+
+        // Lógica para sonido de ALARMA de 6 segundos con COLA INTELIGENTE (Turnos)
+        val prefs = context.getSharedPreferences("ergo_sound_sync", Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val lastSoundEnd = prefs.getLong("ergo_last_sound_end", 0L)
+        
+        val startTime = Math.max(now, lastSoundEnd + 2000)
+        val waitTime = startTime - now
+
+        prefs.edit().putLong("ergo_last_sound_end", startTime + 6000).apply()
+
+        val result = goAsync()
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                if (waitTime > 0) delay(waitTime) 
+
+                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                val ringtone = RingtoneManager.getRingtone(context, uri).apply {
+                    audioAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                }
+                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                
+                ringtone?.play()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
+                } else {
+                    vibrator.vibrate(longArrayOf(0, 500, 500), 0)
+                }
+
+                delay(6000) 
+                
+                ringtone?.stop()
+                vibrator.cancel()
+            } catch (e: Exception) {
+            } finally {
+                result.finish()
+            }
+        }
     }
 
     private fun reprogramarAlertas(context: Context) {
@@ -92,10 +146,7 @@ class NutricionReceiver : BroadcastReceiver() {
                 set(Calendar.MINUTE, m)
                 set(Calendar.SECOND, 0)
                 add(Calendar.MINUTE, -10)
-                // Si la hora ya pasó hoy, programar para mañana
-                if (timeInMillis <= System.currentTimeMillis()) {
-                    add(Calendar.DAY_OF_YEAR, 1)
-                }
+                if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
             }
 
             val intent = Intent(context, NutricionReceiver::class.java).apply { putExtra("tipoComida", tipo) }
@@ -106,8 +157,6 @@ class NutricionReceiver : BroadcastReceiver() {
             } else {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
             }
-        } catch (e: Exception) {
-            // Error al parsear la hora, ignoramos
-        }
+        } catch (e: Exception) {}
     }
 }

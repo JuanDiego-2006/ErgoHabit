@@ -1,9 +1,12 @@
 package com.knexus.ergohabit.features.posture.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knexus.ergohabit.features.posture.domain.usecase.*
+import com.knexus.ergohabit.features.posture.presentation.receiver.HidratacionReceiver
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +20,9 @@ class HidratacionViewModel @Inject constructor(
     private val getDashboardAguaUseCase: GetDashboardAguaUseCase,
     private val registrarTomaAguaUseCase: RegistrarTomaAguaUseCase,
     private val configurarMetaManualAguaUseCase: ConfigurarMetaManualAguaUseCase,
-    private val configurarMetaPesoAguaUseCase: ConfigurarMetaPesoAguaUseCase
+    private val configurarMetaPesoAguaUseCase: ConfigurarMetaPesoAguaUseCase,
+    private val toggleNotificacionesAguaUseCase: ToggleNotificacionesAguaUseCase,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HidratacionUiState())
@@ -25,6 +30,8 @@ class HidratacionViewModel @Inject constructor(
 
     init {
         cargarDashboard()
+        // Iniciamos el ciclo de recordatorios cada hora si no está programado
+        HidratacionReceiver.programarSiguienteAlarma(context)
     }
 
     fun cargarDashboard() {
@@ -42,6 +49,7 @@ class HidratacionViewModel @Inject constructor(
                         estaturaInput = String.format(Locale.US, "%.2f", dashboard.estaturaActual),
                         fraseMotivacional = dashboard.fraseMotivacional,
                         tipsHidratacion = dashboard.tipsHidratacion,
+                        notificacionesActivas = dashboard.notificacionesActivas,
                         isLoading = false
                     ) }
                 }.onFailure { error ->
@@ -206,6 +214,14 @@ class HidratacionViewModel @Inject constructor(
     fun confirmarCustomAmount() {
         agregarAgua(_uiState.value.customAmountTemporal)
         _uiState.update { it.copy(mostrarDialogoCustomAmount = false) }
+    }
+
+    fun toggleNotificaciones() {
+        val nuevoEstado = !_uiState.value.notificacionesActivas
+        _uiState.update { it.copy(notificacionesActivas = nuevoEstado) }
+        viewModelScope.launch {
+            toggleNotificacionesAguaUseCase(nuevoEstado)
+        }
     }
 
     fun clearMessages() {

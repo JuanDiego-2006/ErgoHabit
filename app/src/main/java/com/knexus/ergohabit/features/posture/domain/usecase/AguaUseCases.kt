@@ -25,3 +25,7 @@ class ConfigurarMetaPesoAguaUseCase @Inject constructor(private val repository: 
 class GetProgresoSemanalAguaUseCase @Inject constructor(private val repository: AguaRepository) {
     suspend operator fun invoke(): Result<RegistroSemanalAgua> = repository.getProgresoSemanal()
 }
+
+class ToggleNotificacionesAguaUseCase @Inject constructor(private val repository: AguaRepository) {
+    suspend operator fun invoke(activa: Boolean) = repository.toggleNotificaciones(activa)
+}

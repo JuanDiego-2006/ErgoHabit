@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.foundation.Canvas
@@ -55,15 +56,6 @@ fun ProgresoScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 color = TextPrimary,
                 fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "PROGRESO DE LA SEMANA · TOCA PARA VER GRÁFICA",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextGray,
-                letterSpacing = 1.sp
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -230,12 +222,9 @@ fun HabitoCard(habito: HabitoProgreso, isSelected: Boolean, modifier: Modifier =
 
 @Composable
 fun DetalleHabitoCard(detalle: DetalleHabito) {
-    // Título dinámico: Especial para postura o el que venga de la API para los demás
-    val tituloGrafica = if (detalle.idHabito == 4) {
-        "ALERTAS DE POSTURA · ÚLTIMOS 7 DÍAS"
-    } else {
-        detalle.titulo.ifBlank { "DETALLE DEL HÁBITO" }.uppercase()
-    }
+    // Título dinámico ajustado al estilo de la imagen
+    val tituloPrincipal = if (detalle.idHabito == 4) "Alertas de postura" else detalle.titulo.ifBlank { "Detalle del hábito" }
+    val subtitulo = "ÚLTIMOS 7 DÍAS"
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -247,10 +236,16 @@ fun DetalleHabitoCard(detalle: DetalleHabito) {
             modifier = Modifier.padding(20.dp)
         ) {
             Text(
-                text = tituloGrafica,
-                style = MaterialTheme.typography.titleSmall,
-                color = Color(0xFF5E9C76),
-                fontWeight = FontWeight.Bold,
+                text = tituloPrincipal,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF1E392A),
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitulo,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFFB0B0B0),
+                fontWeight = FontWeight.Normal,
                 letterSpacing = 0.5.sp
             )
 
@@ -328,74 +323,167 @@ fun BarChartSieteDias(registros: List<RegistroHabito>, meta: Float, idHabito: In
         else -> "h"
     }
 
-    // Calculamos el máximo para la escala visual
+    // Calculamos el máximo para la escala visual de forma profesional
     val maxData = registros.maxOfOrNull { it.valor } ?: 0f
-    val maxVisual = maxOf(if (idHabito == 4) 10f else meta, maxData) * 1.2f
     
-    Row(
+    // Forzamos el tope según el hábito para que coincida con la imagen
+    val topValue = when (idHabito) {
+        2 -> maxOf(5f, Math.ceil(maxData.toDouble()).toFloat()) // Para agua, mínimo 5
+        else -> maxOf(10f, (Math.ceil(maxData / 2.0).toInt() * 2).toFloat()) // Para sueño, mínimo 10, de 2 en 2
+    }
+    
+    val step = if (idHabito == 2) 1f else 2f
+    
+    val yLabels = mutableListOf<String>()
+    var curr = topValue
+    while (curr >= -0.01f) {
+        // Mostramos decimales para agua (excepto en el 0) y enteros para el resto
+        yLabels.add(if (idHabito == 2 && curr > 0.1f) "%.1f".format(curr) else curr.toInt().toString())
+        curr -= step
+    }
+
+    val horizontalPadding = 8.dp
+    val yAxisWidth = 32.dp
+    val axisGap = 8.dp
+    val totalStartPadding = yAxisWidth + axisGap
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom
+            .height(280.dp) // Aumentado para dar espacio a etiquetas superiores
     ) {
-        registros.forEach { registro ->
-            val isHoy = registro.etiqueta == "Hoy"
-            
-            // --- CORRECCIÓN DE LÓGICA DE COLOR (Trust API) ---
-            val esFuturo = !isHoy && (registros.indexOf(registro) > registros.indexOf(registros.find { it.etiqueta == "Hoy" }))
-            
-            val barColor = when {
-                idHabito == 4 -> Color(0xFFE54D4D) // Postura siempre rojo
-                esFuturo -> Color.LightGray.copy(alpha = 0.3f) // Futuro en gris
-                registro.esMetaCumplida && registro.valor > 0 -> Color(0xFF5CB38C) // Verde si API dice cumplido
-                else -> Color(0xFFE54D4D) // Rojo si API dice no cumplido
-            }
-            // --------------------------------------------------
-            // --------------------------------------
-
-            val barHeightFraction = (registro.valor / maxVisual).coerceIn(0.1f, 0.95f)
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
-            ) {
-                // Valor con unidad (ej: 9⚠️ o 2.1L)
-                val valorFormateado = if (idHabito == 4) registro.valor.toInt().toString() else registro.valor.toString()
-                Text(
-                    text = "$valorFormateado$unidad",
-                    color = barColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    maxLines = 1
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
+        Row(modifier = Modifier.weight(1f)) {
+            // Eje Y: Texto "Horas" o "Litros"
+            if (idHabito != 4) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.BottomCenter
+                        .fillMaxHeight()
+                        .padding(bottom = 24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .width(if (idHabito == 4) 42.dp else 38.dp) // Postura tiene barras un poco más anchas
-                            .fillMaxHeight(barHeightFraction)
-                            .clip(RoundedCornerShape(topStart = 100.dp, topEnd = 100.dp))
-                            .background(barColor)
+                    Text(
+                        text = if (idHabito == 2) "Litros" else "Horas",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFB0B0B0),
+                        modifier = Modifier.rotate(-90f)
                     )
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // Área de Gráfica (Líneas + Barras)
+                Box(modifier = Modifier.weight(1f)) {
+                    // Cuadrícula de fondo y Etiquetas Y
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        yLabels.forEach { label ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .height(16.dp)
+                                    .padding(end = horizontalPadding)
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFFB0B0B0),
+                                    modifier = Modifier.width(yAxisWidth),
+                                    textAlign = TextAlign.End
+                                )
+                                Spacer(modifier = Modifier.width(axisGap))
+                                HorizontalDivider(
+                                    color = Color(0xFFEEEEEE),
+                                    thickness = 1.dp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    // Barras
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = totalStartPadding, end = horizontalPadding)
+                            .padding(vertical = 8.dp), // Alinea con el centro de las etiquetas (16dp / 2)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        registros.forEach { registro ->
+                            val isHoy = registro.etiqueta == "Hoy"
+                            val esFuturo = !isHoy && (registros.indexOf(registro) > registros.indexOf(registros.find { it.etiqueta == "Hoy" }))
+
+                            val barColor = when {
+                                idHabito == 4 -> Color(0xFFE54D4D)
+                                esFuturo -> Color.LightGray.copy(alpha = 0.3f)
+                                registro.esMetaCumplida && registro.valor > 0 -> Color(0xFF5CB38C)
+                                else -> Color(0xFFE54D4D)
+                            }
+
+                            // La fracción se calcula respecto al valor superior real de la escala
+                            val barHeightFraction = (registro.valor / topValue).coerceIn(0f, 1f)
+
+                            Box(
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                // Barra con altura matemática exacta respecto a la cuadrícula
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(if (idHabito == 4) 0.7f else 0.6f)
+                                        .fillMaxHeight(barHeightFraction)
+                                        .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                                        .background(barColor)
+                                )
+                                
+                                // Etiqueta de valor flotando exactamente sobre la barra
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.Bottom,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    val valorFormateado = if (idHabito == 2) "%.1f".format(registro.valor) else registro.valor.toInt().toString()
+                                    Text(
+                                        text = "$valorFormateado$unidad",
+                                        color = barColor,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    // Este spacer garantiza que el texto "siga" a la barra milimétricamente
+                                    Spacer(modifier = Modifier.fillMaxHeight(barHeightFraction))
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = registro.etiqueta,
-                    color = if (isHoy) Color(0xFF1E392A) else Color(0xFFB0B0B0),
-                    fontWeight = if (isHoy) FontWeight.Bold else FontWeight.Normal,
-                    fontSize = 13.sp,
-                    maxLines = 1
-                )
+                // Etiquetas X (Días)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = totalStartPadding, end = horizontalPadding),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    registros.forEach { registro ->
+                        val isHoy = registro.etiqueta == "Hoy"
+                        Text(
+                            text = registro.etiqueta,
+                            color = if (isHoy) Color(0xFF1E392A) else Color(0xFFB0B0B0),
+                            fontWeight = if (isHoy) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
     }

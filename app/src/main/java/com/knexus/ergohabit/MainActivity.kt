@@ -15,13 +15,17 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.knexus.ergohabit.core.navigation.GrafoNavegacion
 import com.knexus.ergohabit.core.session.SessionManager
 import com.knexus.ergohabit.features.posture.domain.GestorMonitoreoPostura
 import com.knexus.ergohabit.features.posture.presentation.components.CamaraPosturaMonitor
+import com.knexus.ergohabit.core.database.dao.SuenoDao
 import com.knexus.ergohabit.ui.theme.ErgoHabitTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -32,6 +36,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var gestorMonitoreo: GestorMonitoreoPostura
+
+    @Inject
+    lateinit var suenoDao: SuenoDao
 
     private val reactiveIntent = mutableStateOf<Intent?>(null)
     private val permisoCamaraState = mutableStateOf(false)
@@ -84,6 +91,16 @@ class MainActivity : ComponentActivity() {
                     onCamaraInactiva = { gestorMonitoreo.marcarCamaraInactiva() }
                 )
 
+                LaunchedEffect(Unit) {
+                    // Check if there's an active alarm in Room on startup
+                    val sueno = suenoDao.getSuenoDashboard().first()
+                    if (sueno?.isAlarmActive == true && sessionManager.fetchAuthToken() != null) {
+                        navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Sueno) {
+                            launchSingleTop = true
+                        }
+                    }
+                }
+
                 LaunchedEffect(currentReactiveIntent) {
                     val intent = currentReactiveIntent
                     if (intent != null) {
@@ -102,6 +119,12 @@ class MainActivity : ComponentActivity() {
                         } else if (intent.hasExtra("irANutricion")) {
                             if (sessionManager.fetchAuthToken() != null) {
                                 navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Nutricion) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        } else if (intent.hasExtra("irAHidratacion")) {
+                            if (sessionManager.fetchAuthToken() != null) {
+                                navController.navigate(com.knexus.ergohabit.core.navigation.NavRuta.Hidratacion) {
                                     launchSingleTop = true
                                 }
                             }

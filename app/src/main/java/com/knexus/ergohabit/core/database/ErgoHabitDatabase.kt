@@ -3,6 +3,7 @@ package com.knexus.ergohabit.core.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.knexus.ergohabit.core.database.dao.AguaDao
+import com.knexus.ergohabit.core.database.dao.EjercicioDao
 import com.knexus.ergohabit.core.database.dao.NutricionDao
 import com.knexus.ergohabit.core.database.dao.ProgresoDao
 import com.knexus.ergohabit.core.database.dao.SuenoDao
@@ -21,9 +22,11 @@ import com.knexus.ergohabit.core.database.entities.*
         FraseEntity::class,
         AguaDashboardEntity::class,
         SuenoEntity::class,
-        NutricionEntity::class
+        NutricionEntity::class,
+        EjercicioEntity::class,
+        EjercicioSesionEntity::class
     ],
-    version = 8,
+    version = 11,
     exportSchema = false
 )
 abstract class ErgoHabitDatabase : RoomDatabase() {
@@ -34,4 +37,5 @@ abstract class ErgoHabitDatabase : RoomDatabase() {
     abstract fun aguaDao(): AguaDao
     abstract fun suenoDao(): SuenoDao
     abstract fun nutricionDao(): NutricionDao
+    abstract fun ejercicioDao(): EjercicioDao
 }

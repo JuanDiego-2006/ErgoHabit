@@ -14,7 +14,8 @@ fun DashboardAguaResponse.toDomain() = DashboardAgua(
     pesoActual = this.pesoActual,
     historialHoy = this.historialHoy.map { it.toDomain() },
     fraseMotivacional = this.fraseMotivacional,
-    tipsHidratacion = this.tipsHidratacion
+    tipsHidratacion = this.tipsHidratacion,
+    notificacionesActivas = true // Por defecto si viene de red
 )
 
 fun DashboardAgua.toEntity() = AguaDashboardEntity(
@@ -26,7 +27,8 @@ fun DashboardAgua.toEntity() = AguaDashboardEntity(
     mililitrosRestantes = this.mililitrosRestantes,
     fraseMotivacional = this.fraseMotivacional,
     pesoActual = this.pesoActual,
-    estaturaActual = this.estaturaActual
+    estaturaActual = this.estaturaActual,
+    notificacionesActivas = this.notificacionesActivas
 )
 
 fun AguaDashboardEntity.toDomainDashboard() = DashboardAgua(
@@ -39,7 +41,8 @@ fun AguaDashboardEntity.toDomainDashboard() = DashboardAgua(
     pesoActual = this.pesoActual,
     historialHoy = emptyList(),
     fraseMotivacional = this.fraseMotivacional,
-    tipsHidratacion = emptyList()
+    tipsHidratacion = emptyList(),
+    notificacionesActivas = this.notificacionesActivas
 )
 
 fun TomaCronologica.toDomain() = TomaAgua(

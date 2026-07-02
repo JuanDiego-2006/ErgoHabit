@@ -383,10 +383,28 @@ fun FilaComida(
 }
 
 private fun formatearParaDisplay(horario: String): String {
-    return when {
-        horario == "00:00" || horario == "00:00 AM" -> "12:00 AM"
-        horario == "--:--" || horario.isBlank() -> "Sin establecer"
-        else -> horario
+    if (horario.isBlank() || horario == "--:--") return "" // ESPACIO VACÍO: Elimina parpadeo de "Sin establecer"
+    
+    val clean = horario.trim().uppercase()
+    
+    if (clean == "SIN ESTABLECER" || clean == "00:00" || clean == "00:00 AM") return "Sin establecer"
+    
+    // Si ya tiene AM/PM, lo respetamos pero corregimos el 00:00 -> 12:00
+    if (clean.contains("AM") || clean.contains("PM")) {
+        return if (clean.startsWith("00:00")) clean.replace("00:00", "12:00") else clean
+    }
+    
+    // Si es formato 24h (HH:mm)
+    return try {
+        val partes = clean.split(":")
+        var h = partes[0].toInt()
+        val m = partes[1].take(2).toInt()
+        val suffix = if (h >= 12) "PM" else "AM"
+        if (h > 12) h -= 12
+        if (h == 0) h = 12
+        String.format(java.util.Locale.getDefault(), "%02d:%02d %s", h, m, suffix)
+    } catch (e: Exception) {
+        horario
     }
 }
 

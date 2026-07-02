@@ -50,15 +50,41 @@ class TareaViewModel @Inject constructor(
     private val INTERVALO_ESTIRAMIENTO = 30 * 60
 
     init {
-        loadTareas()
-        startAutoRefresh()
-    }
-
-    private fun startAutoRefresh() {
+        recuperarEstadoAlArranque()
         viewModelScope.launch {
             while (true) {
-                delay(30_000) // Actualizar cada 30 segundos de forma silenciosa
+                delay(30_000)
                 loadTareas()
+            }
+        }
+    }
+
+    private fun recuperarEstadoAlArranque() {
+        viewModelScope.launch {
+            val ahora = System.currentTimeMillis()
+            getTareasUseCase().collect { result ->
+                result.onSuccess { estado ->
+                    var tareaParaActivar: TareaEnfoque? = null
+
+                    for (t in estado.pendientes) {
+                        val progreso = getLocalProgressUseCase(t.id)
+                        if (progreso != null && progreso.targetEndTimeMs > ahora) {
+                            tareaParaActivar = t
+                            break
+                        }
+                    }
+
+                    if (tareaParaActivar == null) {
+                        tareaParaActivar = estado.pendientes.find { it.fechaInicioCronometro != null }
+                    }
+
+                    if (tareaParaActivar != null) {
+                        _uiState.update { it.copy(tareaSeleccionada = tareaParaActivar, isTimerRunning = true) }
+                        recuperarYIniciarSincronizado(tareaParaActivar)
+                    } else {
+                        loadTareas()
+                    }
+                }
             }
         }
     }
@@ -84,7 +110,6 @@ class TareaViewModel @Inject constructor(
 
     fun loadTareas() {
         viewModelScope.launch {
-            // Solo mostramos Loading si no tenemos datos previos
             if (_uiState.value.tareasEstado == null) {
                 _uiState.update { it.copy(isLoading = true) }
             }
@@ -94,64 +119,59 @@ class TareaViewModel @Inject constructor(
                     var tareaParaSincronizar: TareaEnfoque? = null
 
                     _uiState.update { current ->
-                        val actual = current.tareaSeleccionada
-
-                        // 1. Sincronizar estado visual de cronómetro con la lista remota
-                        val pendientesSincronizadas = estado.pendientes.map { tarea ->
-                            if (tarea.id == idTareaEnEjecucion && current.isTimerRunning) {
-                                tarea.copy(fechaInicioCronometro = tarea.fechaInicioCronometro ?: "ACTIVO_LOCAL")
-                            } else tarea
-                        }
-                        val estadoSincronizado = estado.copy(pendientes = pendientesSincronizadas)
-
-                        // 2. Buscamos la versión actualizada de la tarea seleccionada
-                        val encontrada = (estadoSincronizado.pendientes + estadoSincronizado.completadas)
-                            .find { it.id == actual?.id }
-                        val nuevaSeleccionada = encontrada ?: actual
-
-                        // 3. Sincronización si es necesario
-                        if (nuevaSeleccionada?.fechaInicioCronometro != null && idTareaEnEjecucion == null) {
-                            tareaParaSincronizar = nuevaSeleccionada
+                        val runningRemote = estado.pendientes.find { it.fechaInicioCronometro != null }
+                        
+                        if (idTareaEnEjecucion == null && runningRemote != null) {
+                            tareaParaSincronizar = runningRemote
                         }
 
-                        // --- ESCUDO DE LISTA ESTÁTICA ---
+                        val runningId = idTareaEnEjecucion ?: runningRemote?.id
+                        val encontradaEnNuevaLista = (estado.pendientes + estado.completadas).find { it.id == current.tareaSeleccionada?.id }
+                        
+                        val nuevaSeleccionada = if (runningId != null) {
+                            (estado.pendientes + estado.completadas).find { it.id == runningId } ?: encontradaEnNuevaLista
+                        } else {
+                            encontradaEnNuevaLista ?: estado.pendientes.firstOrNull()
+                        }
+
                         val setIdsActuales = current.tareasEstado?.pendientes?.map { it.id }?.toSet() ?: emptySet()
-                        val setIdsNuevos = estadoSincronizado.pendientes.map { it.id }.toSet()
+                        val setIdsNuevos = estado.pendientes.map { it.id }.toSet()
 
                         val listaFinal = if (setIdsActuales == setIdsNuevos && current.tareasEstado != null) {
                             val pendientesManteniendoOrden = current.tareasEstado!!.pendientes.mapNotNull { local ->
-                                estadoSincronizado.pendientes.find { it.id == local.id }
+                                estado.pendientes.find { it.id == local.id }
                             }
                             current.tareasEstado!!.copy(
                                 pendientes = pendientesManteniendoOrden,
-                                completadas = estadoSincronizado.completadas,
-                                totalPendientesText = estadoSincronizado.totalPendientesText,
-                                totalCompletadasText = estadoSincronizado.totalCompletadasText
+                                completadas = estado.completadas,
+                                totalPendientesText = estado.totalPendientesText,
+                                totalCompletadasText = estado.totalCompletadasText
                             )
                         } else {
-                            estadoSincronizado
+                            estado
                         }
 
-                        // --- ACTUALIZACIÓN DE TIEMPO INTELIGENTE ---
-                        // Si la tarea seleccionada no está corriendo, actualizamos su tiempo restante
-                        val nuevoTiempo = if (idTareaEnEjecucion != nuevaSeleccionada?.id) {
-                            val segundosAPI = (nuevaSeleccionada?.duracionMinutos ?: 0) * 60
-                            // Si la diferencia es menor a 65 segundos, conservamos los segundos locales
-                            // para evitar que el cronómetro "salte" al minuto entero al pausar.
-                            if (nuevaSeleccionada?.id == actual?.id && Math.abs(current.tiempoRestante - segundosAPI) < 65) {
+                        // --- PROTECCIÓN DE PRECISIÓN ABSOLUTA ---
+                        val segundosAPI = (nuevaSeleccionada?.duracionMinutos ?: 0) * 60
+                        
+                        val nuevoTiempo = when {
+                            // 1. Si está corriendo, respetamos el motor de segundos
+                            nuevaSeleccionada?.id == runningId && (current.isTimerRunning || runningRemote != null || idTareaEnEjecucion != null) -> {
                                 current.tiempoRestante
-                            } else {
-                                segundosAPI
                             }
-                        } else {
-                            current.tiempoRestante
+                            // 2. ESCUDO DE PAUSA: Si acabamos de pausar y el servidor manda el tiempo viejo, confiamos en Room
+                            nuevaSeleccionada?.id == current.tareaSeleccionada?.id && !current.isTimerRunning && segundosAPI > current.tiempoRestante && current.tiempoRestante > 0 -> {
+                                current.tiempoRestante
+                            }
+                            else -> segundosAPI
                         }
 
                         current.copy(
                             tareasEstado = listaFinal,
                             isLoading = false,
                             tareaSeleccionada = nuevaSeleccionada,
-                            tiempoRestante = nuevoTiempo
+                            tiempoRestante = nuevoTiempo,
+                            isTimerRunning = current.isTimerRunning || runningRemote != null || idTareaEnEjecucion != null
                         )
                     }
 
@@ -166,7 +186,6 @@ class TareaViewModel @Inject constructor(
 
     private fun recuperarYIniciarSincronizado(tarea: TareaEnfoque) {
         viewModelScope.launch {
-            // 1. Obtener detalles del cronómetro (frases/acciones) según flujo API
             getAlertaSaludUseCase(tarea.id).onSuccess { info ->
                 _uiState.update { it.copy(alertaSaludInfo = info) }
             }
@@ -174,29 +193,36 @@ class TareaViewModel @Inject constructor(
             val progreso = getLocalProgressUseCase(tarea.id)
             val ahora = System.currentTimeMillis()
 
-            val segundosAPI = tarea.duracionMinutos * 60
+            var segundosRestantesCalculados = -1
+            tarea.fechaInicioCronometro?.let { fechaIso ->
+                try {
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                    sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    val fechaInicio = sdf.parse(fechaIso)?.time ?: 0L
+                    val tiempoTranscurrido = (ahora - fechaInicio) / 1000
+                    segundosRestantesCalculados = (tarea.duracionMinutos * 60) - tiempoTranscurrido.toInt()
+                } catch (e: Exception) { }
+            }
 
-            // Lógica Maestra: Si hay un targetEndTimeMs guardado y es futuro, calculamos el tiempo real pasado
-            val segundos = if (progreso != null && progreso.targetEndTimeMs > ahora) {
-                ((progreso.targetEndTimeMs - ahora) / 1000).toInt()
-            } else if (progreso != null && Math.abs(progreso.segundosRestantes - segundosAPI) < 65) {
-                progreso.segundosRestantes
-            } else {
-                segundosAPI
+            val esRoomActivo = progreso != null && progreso.targetEndTimeMs > ahora
+            val segundosFinales = when {
+                esRoomActivo -> ((progreso!!.targetEndTimeMs - ahora) / 1000).toInt()
+                segundosRestantesCalculados > 0 -> segundosRestantesCalculados
+                else -> tarea.duracionMinutos * 60
             }
 
             val inicial = progreso?.segundosIniciales ?: (tarea.duracionMinutos * 60)
-            val targetEnd = progreso?.targetEndTimeMs ?: (ahora + (segundos * 1000L))
+            val targetEnd = if (esRoomActivo) progreso!!.targetEndTimeMs else (ahora + (segundosFinales * 1000L))
 
             idTareaEnEjecucion = tarea.id
 
             _uiState.update {
                 it.copy(
                     tareaSeleccionada = tarea,
-                    tiempoRestante = segundos,
+                    tiempoRestante = if (segundosFinales > 0) segundosFinales else 0,
                     duracionSesionActual = inicial,
                     targetEndTimeMs = targetEnd,
-                    isTimerRunning = (tarea.fechaInicioCronometro != null && segundos > 0)
+                    isTimerRunning = segundosFinales > 0
                 )
             }
             if (_uiState.value.isTimerRunning) startTimerVisual()
@@ -254,19 +280,22 @@ class TareaViewModel @Inject constructor(
         val tarea = _uiState.value.tareaSeleccionada ?: return
         if (_uiState.value.isTimerRunning) {
             viewModelScope.launch {
+                // GUARDADO PREVENTIVO EN ROOM
+                saveLocalProgressUseCase(tarea.id, _uiState.value.tiempoRestante, _uiState.value.duracionSesionActual, -1L)
+
                 pausarTareaUseCase(tarea.id).onSuccess { mensaje ->
                     timerJob?.cancel()
                     idTareaEnEjecucion = null
-                    _uiState.update { it.copy(isTimerRunning = false, targetEndTimeMs = -1L) }
                     cancelarTodasLasAlarmas(tarea.id)
-                    saveLocalProgressUseCase(tarea.id, _uiState.value.tiempoRestante, _uiState.value.duracionSesionActual, -1L)
-                    _uiState.update { it.copy(successMessage = mensaje) }
+                    _uiState.update { it.copy(isTimerRunning = false, targetEndTimeMs = -1L, successMessage = mensaje) }
+                    
+                    // ESPERA DE GRACIA: Damos 800ms al servidor para que procese su MySQL
+                    delay(800)
                     loadTareas()
                 }.onFailure { error -> _uiState.update { it.copy(error = error.message) } }
             }
         } else {
             viewModelScope.launch {
-                // ASEGURAR INFO DE ALERTA: Si no la tenemos, la pedimos antes de iniciar
                 val infoAlerta = _uiState.value.alertaSaludInfo ?: getAlertaSaludUseCase(tarea.id).getOrNull()
 
                 iniciarTareaUseCase(tarea.id).onSuccess { mensaje ->
@@ -284,12 +313,11 @@ class TareaViewModel @Inject constructor(
                     ) }
                     saveLocalProgressUseCase(tarea.id, duration, inicial, targetEnd)
 
-                    // --- FLUJO API: Programar alertas de salud si el servidor lo autorizó ---
                     if (infoAlerta?.requierePostura == true) {
                         programarAlarmaSistema(tarea.id, (30 * 60).toLong(), "ALERTA_SALUD")
                     }
-
                     programarAlarmaSistema(tarea.id, duration.toLong(), "FIN_TAREA")
+
                     startTimerVisual()
                     loadTareas()
                 }.onFailure { error -> _uiState.update { it.copy(error = error.message) } }
@@ -302,9 +330,9 @@ class TareaViewModel @Inject constructor(
         timerJob?.cancel()
 
         timerJob = viewModelScope.launch {
-            // Recuperamos el targetEnd una sola vez al iniciar el motor
-            val initialProgress = getLocalProgressUseCase(runningId)
-            var currentTargetEnd = initialProgress?.targetEndTimeMs ?: -1L
+            // Recuperamos el targetEnd del estado actual o de Room como salvavidas
+            val progress = getLocalProgressUseCase(runningId)
+            var currentTargetEnd = _uiState.value.targetEndTimeMs.takeIf { it > 0 } ?: progress?.targetEndTimeMs ?: -1L
 
             while (true) {
                 delay(1000)
@@ -319,7 +347,7 @@ class TareaViewModel @Inject constructor(
                     _uiState.update { it.copy(isTimerRunning = false, mostrarAlertaSalud = true) }
                     pausarTareaUseCase(runningId)
                     segundosParaAlertaHealth = 0
-                    break
+                    break 
                 }
 
                 // 2. Sincronización de TargetEnd (Si el usuario cambió de tarea, el state puede tener el dato fresco)
@@ -327,7 +355,7 @@ class TareaViewModel @Inject constructor(
                     currentTargetEnd = state.targetEndTimeMs
                 }
 
-                // 3. CÁLCULO DE ESCUDO DE TIEMPO REAL
+                // 3. CÁLCULO DE ESCUDO DE TIEMPO REAL (Seguir corriendo aunque se cierre la App)
                 if (currentTargetEnd > 0) {
                     val nuevoRestante = ((currentTargetEnd - ahora) / 1000).toInt()
 
@@ -340,12 +368,11 @@ class TareaViewModel @Inject constructor(
                     if (state.tareaSeleccionada?.id == runningId) {
                         _uiState.update { it.copy(tiempoRestante = nuevoRestante) }
                     }
-                }
-
-                // 4. Guardado periódico de seguridad
-                if (segundosParaAlertaHealth % 5 == 0) {
-                    val currentRemaining = if (currentTargetEnd > 0) ((currentTargetEnd - ahora) / 1000).toInt() else 0
-                    saveLocalProgressUseCase(runningId, currentRemaining, state.duracionSesionActual, currentTargetEnd)
+                    
+                    // 4. Guardado periódico de seguridad en Room (Salvavidas por si falla el servidor)
+                    if (ahora % 5000 < 1000) { 
+                        saveLocalProgressUseCase(runningId, nuevoRestante, state.duracionSesionActual, currentTargetEnd)
+                    }
                 }
             }
         }
@@ -391,10 +418,17 @@ class TareaViewModel @Inject constructor(
 
     private fun programarAlarmaSistema(idTarea: Int, segundos: Long, tipo: String) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, AlertaSaludReceiver::class.java).apply { putExtra("idTarea", idTarea); if (tipo == "FIN_TAREA") putExtra("esFinDeTarea", true) }
-        val requestId = if (tipo == "FIN_TAREA") idTarea + 1000 else idTarea
+        val intent = Intent(context, AlertaSaludReceiver::class.java).apply { 
+            putExtra("idTarea", idTarea)
+            if (tipo == "FIN_TAREA") putExtra("esFinDeTarea", true) 
+        }
+        
+        // Usar los mismos offsets de seguridad que el Receiver (5000 y 6000)
+        val requestId = if (tipo == "FIN_TAREA") idTarea + 6000 else idTarea + 5000
+        
         val pendingIntent = PendingIntent.getBroadcast(context, requestId, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val triggerTime = System.currentTimeMillis() + (segundos * 1000)
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
         } else {
@@ -405,7 +439,8 @@ class TareaViewModel @Inject constructor(
     private fun cancelarTodasLasAlarmas(idTarea: Int) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, AlertaSaludReceiver::class.java)
-        listOf(idTarea, idTarea + 1000).forEach { id ->
+        // Cancelamos ambos rangos de seguridad
+        listOf(idTarea + 5000, idTarea + 6000).forEach { id ->
             val pendingIntent = PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
             if (pendingIntent != null) alarmManager.cancel(pendingIntent)
         }

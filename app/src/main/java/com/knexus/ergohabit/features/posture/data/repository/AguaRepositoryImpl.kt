@@ -29,7 +29,11 @@ class AguaRepositoryImpl @Inject constructor(
         // 2. Actualizar desde la API
         try {
             val response = api.obtenerDashboardAgua()
-            dao.insertDashboard(response.toDomain().toEntity())
+            val currentLocal = dao.getDashboard().first()
+            val entity = response.toDomain().toEntity().copy(
+                notificacionesActivas = currentLocal?.notificacionesActivas ?: true
+            )
+            dao.insertDashboard(entity)
         } catch (e: Exception) {
             val current = dao.getDashboard().first()
             if (current == null) send(Result.failure(e))
@@ -80,5 +84,9 @@ class AguaRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override suspend fun toggleNotificaciones(activa: Boolean) {
+        dao.updateNotificacionesStatus(activa)
     }
 }

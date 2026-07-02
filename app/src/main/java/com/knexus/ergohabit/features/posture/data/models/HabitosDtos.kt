@@ -44,7 +44,10 @@ data class SuenoResponse(
     @SerializedName("horaDespertarConfigurada") val horaDespertarConfigurada: String,
     @SerializedName("porcentajeCumplimiento") val porcentajeCumplimiento: Int,
     @SerializedName("fraseMotivacional") val fraseMotivacional: String = "",
-    @SerializedName("tipsSueno") val tipsSueno: List<String> = emptyList()
+    @SerializedName("tipsSueno") val tipsSueno: List<String> = emptyList(),
+    val isAlarmActiveLocal: Boolean = false,
+    val isSoundEnabledLocal: Boolean = false,
+    val notificacionesHabilitadasLocal: Boolean = true
 )
 
 data class SuenoRequest(

@@ -2,8 +2,10 @@ package com.knexus.ergohabit.features.posture.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.knexus.ergohabit.features.posture.domain.repository.NutricionRepository
+import com.knexus.ergohabit.features.posture.domain.usecase.GetNutricionDashboardUseCase
+import com.knexus.ergohabit.features.posture.domain.usecase.MarcarComidaUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,20 +15,36 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NutricionViewModel @Inject constructor(
-    private val repository: NutricionRepository
+    private val getNutricionDashboardUseCase: GetNutricionDashboardUseCase,
+    private val marcarComidaUseCase: MarcarComidaUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NutricionUiState())
     val uiState: StateFlow<NutricionUiState> = _uiState.asStateFlow()
 
     init {
-        cargarDashboard()
+        // En init, cargamos de forma silenciosa si ya tenemos algo para evitar parpadeo
+        cargarDashboard(silent = true)
+        startAutoRefresh()
     }
 
-    fun cargarDashboard() {
+    private fun startAutoRefresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            repository.getNutricionDashboard().collect { result ->
+            while (true) {
+                delay(30_000)
+                cargarDashboard(silent = true)
+            }
+        }
+    }
+
+    fun cargarDashboard(silent: Boolean = false) {
+        viewModelScope.launch {
+            // Solo mostramos loading si es la primerísima vez (estado vacío)
+            if (!silent && _uiState.value.horaDesayuno == "--:--") {
+                _uiState.update { it.copy(isLoading = true) }
+            }
+            
+            getNutricionDashboardUseCase().collect { result ->
                 result.onSuccess { respuesta ->
                     val completadas = listOf(
                         respuesta.chequeoDesayuno,
@@ -59,12 +77,21 @@ class NutricionViewModel @Inject constructor(
 
     fun marcarComida(tipoComida: String, completada: Boolean) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
-            repository.marcarComida(tipoComida, completada).onSuccess { msg ->
-                _uiState.update { it.copy(isLoading = false, successMessage = msg) }
-                cargarDashboard()
+            _uiState.update { current ->
+                when(tipoComida) {
+                    "DESAYUNO" -> current.copy(desayunoCompletado = completada)
+                    "COMIDA" -> current.copy(comidaCompletada = completada)
+                    "CENA" -> current.copy(cenaCompletada = completada)
+                    else -> current
+                }
+            }
+            
+            marcarComidaUseCase(tipoComida, completada).onSuccess { msg ->
+                _uiState.update { it.copy(successMessage = msg) }
+                cargarDashboard(silent = true)
             }.onFailure { error ->
-                _uiState.update { it.copy(isLoading = false, error = error.message) }
+                _uiState.update { it.copy(error = error.message) }
+                cargarDashboard(silent = true)
             }
         }
     }

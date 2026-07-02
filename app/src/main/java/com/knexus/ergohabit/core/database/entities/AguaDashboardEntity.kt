@@ -13,5 +13,6 @@ data class AguaDashboardEntity(
     val mililitrosRestantes: Int,
     val fraseMotivacional: String,
     val pesoActual: Double,
-    val estaturaActual: Double
+    val estaturaActual: Double,
+    val notificacionesActivas: Boolean = true
 )
