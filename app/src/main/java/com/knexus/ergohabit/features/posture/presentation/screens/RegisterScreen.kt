@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.knexus.ergohabit.features.posture.presentation.viewmodel.RegisterViewModel
+import com.knexus.ergohabit.ui.components.ErgoHabitBrandHeader
 import com.knexus.ergohabit.ui.theme.*
 
 @Composable
@@ -59,27 +60,9 @@ fun RegisterScreen(
                 .padding(horizontal = 32.dp, vertical = 32.dp)
         ) {
 
-            // ── LOGO ─────────────────────────────────────────
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(GreenPrimary)
-            ) {
-                Text(text = "🌿", fontSize = 36.sp)
-            }
+            ErgoHabitBrandHeader(compact = true)
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ── NOMBRE APP ───────────────────────────────────
-            Text(
-                text = "ErgoHabit",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                color = TextPrimary,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             // ── CARD PRINCIPAL ────────────────────────────────
             Card(

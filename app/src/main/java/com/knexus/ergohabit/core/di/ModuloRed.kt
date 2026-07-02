@@ -46,7 +46,7 @@ object ModuloRed {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.220.188.134:8080/") // Cambia a 10.0.2.2 si usas emulador
+            .baseUrl("https://ergohabit.onrender.com/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

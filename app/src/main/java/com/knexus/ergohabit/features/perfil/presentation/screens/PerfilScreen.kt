@@ -45,6 +45,14 @@ fun PerfilScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { mensaje ->
+            snackbarHostState.showSnackbar(mensaje)
+            viewModel.limpiarError()
+        }
+    }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -54,6 +62,7 @@ fun PerfilScreen(
 
     Scaffold(
         containerColor = BgMain,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = { BarraNavegacionInferior(navController) }
     ) { innerPadding ->
         Column(
@@ -79,7 +88,13 @@ fun PerfilScreen(
                             .clickable { launcher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (uiState.usuario?.fotoUrl != null) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(36.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        } else if (uiState.usuario?.fotoUrl != null) {
                             AsyncImage(
                                 model = uiState.usuario?.fotoUrl,
                                 contentDescription = "Foto de perfil",

@@ -105,12 +105,23 @@ class PerfilViewModel @Inject constructor(
     fun actualizarFoto(uri: String) {
         val userId = sessionManager.fetchUserId() ?: return
         viewModelScope.launch {
-            repository.updateFotoPerfil(userId, uri).onSuccess { nuevaUri ->
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            repository.updateFotoPerfil(userId, uri).onSuccess { nuevaUrl ->
                 _uiState.value = _uiState.value.copy(
-                    usuario = _uiState.value.usuario?.copy(fotoUrl = nuevaUri)
+                    usuario = _uiState.value.usuario?.copy(fotoUrl = nuevaUrl),
+                    isLoading = false
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    error = error.message ?: "No se pudo subir la foto de perfil.",
+                    isLoading = false
                 )
             }
         }
+    }
+
+    fun limpiarError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 
     fun cerrarSesion(onLogoutSuccess: () -> Unit) {
