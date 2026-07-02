@@ -1,5 +1,6 @@
 package com.knexus.ergohabit.core.hardware.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -20,20 +21,23 @@ class AndroidGestorSonido @Inject constructor(
     private val generadorTonos = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
     private val vibrador = contexto.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
+    @SuppressLint("MissingPermission")
     override fun sonarAlerta() {
         // Sonar un pitido de alerta
-        generadorTonos.startTone(ToneGenerator.TONE_CDMA_PIP, 150)
+        generadorTonos.startTone(ToneGenerator.TONE_CDMA_PIP, 200)
         
-        // Vibrar durante 500ms con compatibilidad para versiones antiguas (API 24/25)
+        // Patrón de vibración elegante (el que configuramos antes)
+        val pattern = longArrayOf(0, 500, 2000, 500)
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrador.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrador.vibrate(VibrationEffect.createWaveform(pattern, -1))
         } else {
-            // Método antiguo para versiones anteriores a Android Oreo
             @Suppress("DEPRECATION")
-            vibrador.vibrate(500)
+            vibrador.vibrate(pattern, -1)
         }
     }
 
+    @SuppressLint("MissingPermission")
     override fun detenerSonido() {
         generadorTonos.stopTone()
         vibrador.cancel()

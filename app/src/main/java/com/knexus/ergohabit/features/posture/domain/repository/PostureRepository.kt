@@ -10,7 +10,12 @@ interface PostureRepository {
     fun getPostureData(): Flow<EntidadPostura>
     
     /**
-     * Simula o ejecuta el envío de datos al servidor.
+     * Guarda un reporte de postura incorrecta localmente.
      */
-    suspend fun enviarReportePostura(entidad: EntidadPostura): Result<Boolean>
+    suspend fun guardarReporteLocal(entidad: EntidadPostura): Result<Unit>
+
+    /**
+     * Sincroniza las alertas acumuladas con el servidor.
+     */
+    suspend fun sincronizarConServidor(): Result<Boolean>
 }

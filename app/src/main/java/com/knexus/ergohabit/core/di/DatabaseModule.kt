@@ -68,4 +68,10 @@ object DatabaseModule {
     fun provideNutricionDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.NutricionDao {
         return database.nutricionDao()
     }
+
+    @Provides
+    @Singleton
+    fun providePosturaDao(database: ErgoHabitDatabase): com.knexus.ergohabit.core.database.dao.PosturaDao {
+        return database.posturaDao()
+    }
 }
