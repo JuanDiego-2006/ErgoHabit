@@ -2,6 +2,7 @@ package com.knexus.ergohabit.core.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.knexus.ergohabit.core.database.dao.PosturaDao
 import com.knexus.ergohabit.core.database.dao.AguaDao
 import com.knexus.ergohabit.core.database.dao.EjercicioDao
 import com.knexus.ergohabit.core.database.dao.NutricionDao
@@ -11,6 +12,7 @@ import com.knexus.ergohabit.core.database.dao.TareaDao
 import com.knexus.ergohabit.core.database.dao.TareaProgresoDao
 import com.knexus.ergohabit.core.database.dao.UsuarioPerfilDao
 import com.knexus.ergohabit.core.database.entities.*
+import com.knexus.ergohabit.core.database.entities.PosturaEntity
 
 @Database(
     entities = [
@@ -24,7 +26,8 @@ import com.knexus.ergohabit.core.database.entities.*
         SuenoEntity::class,
         NutricionEntity::class,
         EjercicioEntity::class,
-        EjercicioSesionEntity::class
+        EjercicioSesionEntity::class,
+                PosturaEntity::class
     ],
     version = 11,
     exportSchema = false
@@ -38,4 +41,5 @@ abstract class ErgoHabitDatabase : RoomDatabase() {
     abstract fun suenoDao(): SuenoDao
     abstract fun nutricionDao(): NutricionDao
     abstract fun ejercicioDao(): EjercicioDao
+    abstract fun posturaDao(): PosturaDao
 }
