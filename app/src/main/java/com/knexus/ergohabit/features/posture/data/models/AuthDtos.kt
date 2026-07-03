@@ -32,3 +32,7 @@ data class UserResponseDto(
     @SerializedName("email") val email: String,
     @SerializedName("idRol") val idRol: Int
 )
+
+data class AuthErrorResponseDto(
+    @SerializedName("error") val error: String
+)

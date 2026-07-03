@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import java.util.Calendar
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -100,10 +101,12 @@ fun PostureScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
+                val hora = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                val saludoBase = if (hora in 6..18) "Buenos días" else "Buenas noches"
                 val saludo = if (estado.nombreUsuario.isNotBlank()) {
-                    "Buenos días, ${estado.nombreUsuario} 👋"
+                    "$saludoBase, ${estado.nombreUsuario} 👋"
                 } else {
-                    "Buenos días 👋"
+                    "$saludoBase 👋"
                 }
 
                 Row(

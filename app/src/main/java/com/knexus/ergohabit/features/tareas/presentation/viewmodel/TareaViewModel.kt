@@ -230,15 +230,31 @@ class TareaViewModel @Inject constructor(
     }
 
     fun seleccionarTarea(tarea: TareaEnfoque) {
-        if (_uiState.value.tareaSeleccionada?.id == tarea.id) return
+        val current = _uiState.value
+        
+        // --- LÓGICA DE TOGGLE: Si ya está seleccionada, la ocultamos (null) ---
+        if (current.tareaSeleccionada?.id == tarea.id) {
+            viewModelScope.launch {
+                // Guardamos el progreso antes de ocultar por seguridad
+                saveLocalProgressUseCase(
+                    tarea.id,
+                    current.tiempoRestante,
+                    current.duracionSesionActual,
+                    if (idTareaEnEjecucion == tarea.id) current.targetEndTimeMs else -1L
+                )
+                _uiState.update { it.copy(tareaSeleccionada = null) }
+            }
+            return
+        }
+
         viewModelScope.launch {
-            // Guardamos el progreso de la anterior pero NO cancelamos el job global si ya hay uno corriendo
-            _uiState.value.tareaSeleccionada?.let { anterior ->
+            // Guardamos el progreso de la anterior si existía
+            current.tareaSeleccionada?.let { anterior ->
                 saveLocalProgressUseCase(
                     anterior.id,
-                    _uiState.value.tiempoRestante,
-                    _uiState.value.duracionSesionActual,
-                    if (idTareaEnEjecucion == anterior.id) _uiState.value.targetEndTimeMs else -1L
+                    current.tiempoRestante,
+                    current.duracionSesionActual,
+                    if (idTareaEnEjecucion == anterior.id) current.targetEndTimeMs else -1L
                 )
             }
 

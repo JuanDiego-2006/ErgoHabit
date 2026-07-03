@@ -135,11 +135,16 @@ class NutricionReceiver : BroadcastReceiver() {
     }
 
     private fun programar(context: Context, am: AlarmManager, hora: String, tipo: String, code: Int) {
-        if (hora.isBlank() || hora == "00:00" || hora == "--:--") return
+        if (hora.isBlank() || hora == "00:00" || hora == "--:--" || hora == "Sin establecer") return
         try {
-            val partes = hora.split(":")
-            val h = partes[0].toInt()
-            val m = partes[1].take(2).toInt()
+            val clean = hora.trim().uppercase()
+            val partesBase = clean.split(" ")[0].split(":")
+            var h = partesBase[0].toInt()
+            val m = partesBase[1].take(2).toInt()
+
+            // Corregir formato AM/PM para que no suene a las 2 AM si es PM
+            if (clean.contains("PM") && h < 12) h += 12
+            if (clean.contains("AM") && h == 12) h = 0
 
             val cal = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, h)

@@ -226,14 +226,24 @@ fun TareaScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            CronometroSeccion(
-                tarea = uiState.tareaSeleccionada,
-                tiempoRestante = uiState.tiempoRestante,
-                duracionSesionActual = uiState.duracionSesionActual,
-                isRunning = uiState.isTimerRunning,
-                onToggleTimer = { viewModel.toggleTimer() }
-            )
+            
+            // --- CRONÓMETRO EXPANDIBLE (Toggle) ---
+            androidx.compose.animation.AnimatedVisibility(
+                visible = uiState.tareaSeleccionada != null,
+                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    CronometroSeccion(
+                        tarea = uiState.tareaSeleccionada,
+                        tiempoRestante = uiState.tiempoRestante,
+                        duracionSesionActual = uiState.duracionSesionActual,
+                        isRunning = uiState.isTimerRunning,
+                        onToggleTimer = { viewModel.toggleTimer() }
+                    )
+                }
+            }
         }
     }
 }

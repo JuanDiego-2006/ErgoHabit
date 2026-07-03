@@ -9,6 +9,7 @@ data class RegisterUiState(
     val passwordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val successMessage: String? = null,
     val isRegisterSuccess: Boolean = false,
     val aceptoPrivacidad: Boolean = false,
     val aceptoTerminos: Boolean = false

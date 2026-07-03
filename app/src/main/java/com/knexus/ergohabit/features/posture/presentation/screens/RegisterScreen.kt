@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
@@ -37,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.knexus.ergohabit.features.posture.presentation.viewmodel.RegisterViewModel
 import com.knexus.ergohabit.ui.components.ErgoHabitBrandHeader
 import com.knexus.ergohabit.ui.theme.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun RegisterScreen(
@@ -48,9 +50,10 @@ fun RegisterScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    // --- CAMBIO REALIZADO: Observar el éxito del registro para navegar ---
+    // --- CAMBIO REALIZADO: Observar el éxito del registro para navegar con un pequeño retardo ---
     LaunchedEffect(state.isRegisterSuccess) {
         if (state.isRegisterSuccess) {
+            delay(2000) // 2 segundos para que el usuario lea el mensaje de éxito
             onNavigateToLogin()
             viewModel.resetNavigation()
         }
@@ -192,7 +195,7 @@ fun RegisterScreen(
 
                     // ── SEGUNDO APELLIDO ──────────────────────
                     Text(
-                        text = "SEGUNDO APELLIDO (OPCIONAL)",
+                        text = "SEGUNDO APELLIDO",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextSecondary,
@@ -395,7 +398,7 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- CAMBIO REALIZADO: Mostrar mensaje de error si existe ---
+                    // --- CAMBIO REALIZADO: Mostrar mensaje de error o éxito si existe ---
                     if (state.errorMessage != null) {
                         Text(
                             text = state.errorMessage!!,
@@ -403,6 +406,35 @@ fun RegisterScreen(
                             fontSize = 12.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
+                    }
+
+                    if (state.successMessage != null) {
+                        Surface(
+                            color = Color(0xFFE8F5E9),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF2D5A4C),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = state.successMessage!!,
+                                    color = Color(0xFF2D5A4C),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                     // ------------------------------------------------------------
 

@@ -75,7 +75,11 @@ class RegisterViewModel @Inject constructor(
                 email = estado.email,
                 contrasena = estado.password
             ).onSuccess {
-                _uiState.update { it.copy(isLoading = false, isRegisterSuccess = true) }
+                _uiState.update { it.copy(
+                    isLoading = false, 
+                    isRegisterSuccess = true,
+                    successMessage = "¡Cuenta creada con éxito! Redirigiendo..."
+                ) }
             }.onFailure { error ->
                 _uiState.update { 
                     it.copy(

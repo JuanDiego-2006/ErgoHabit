@@ -137,12 +137,19 @@ class ConfigNutricionViewModel @Inject constructor(
     }
 
     private fun programar(am: AlarmManager, hStr: String, tipo: String, code: Int) {
-        if (hStr.isBlank()) return
+        if (hStr.isBlank() || hStr == "00:00" || hStr == "--:--" || hStr == "Sin establecer") return
         try {
-            val p = hStr.split(":")
+            val clean = hStr.trim().uppercase()
+            val partesBase = clean.split(" ")[0].split(":")
+            var h = partesBase[0].toInt()
+            val m = partesBase[1].take(2).toInt()
+
+            if (clean.contains("PM") && h < 12) h += 12
+            if (clean.contains("AM") && h == 12) h = 0
+
             val cal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, p[0].toInt())
-                set(Calendar.MINUTE, p[1].toInt())
+                set(Calendar.HOUR_OF_DAY, h)
+                set(Calendar.MINUTE, m)
                 set(Calendar.SECOND, 0)
                 add(Calendar.MINUTE, -10)
                 if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
