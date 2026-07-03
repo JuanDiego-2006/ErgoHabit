@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -45,16 +46,15 @@ class HidratacionReceiver : BroadcastReceiver() {
         }
 
         val result = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Main).launch {
             try {
-                val agua = aguaDao.getDashboard().first()
+                val agua = withContext(Dispatchers.IO) { aguaDao.getDashboard().first() }
+                val sueno = withContext(Dispatchers.IO) { suenoDao.getSuenoDashboard().first() }
+                val nutricion = withContext(Dispatchers.IO) { nutricionDao.getNutricionConfig().first() }
                 
                 // 0. VERIFICAR SI LAS NOTIFICACIONES ESTÁN ACTIVAS
                 if (agua?.notificacionesActivas == false) return@launch
 
-                val sueno = suenoDao.getSuenoDashboard().first()
-                val nutricion = nutricionDao.getNutricionConfig().first()
-                
                 val ahora = Calendar.getInstance()
                 val horaActual = ahora.get(Calendar.HOUR_OF_DAY)
                 val minutoActual = ahora.get(Calendar.MINUTE)
@@ -94,9 +94,7 @@ class HidratacionReceiver : BroadcastReceiver() {
                     }
 
                     if (!debeSaltarPorComida) {
-                        launch(Dispatchers.Main) {
-                            mostrarNotificacionConSonidoLargo(context)
-                        }
+                        mostrarNotificacionConSonidoLargo(context)
                     }
                 }
             } finally {
@@ -106,7 +104,7 @@ class HidratacionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun mostrarNotificacionConSonidoLargo(context: Context) {
+    private suspend fun mostrarNotificacionConSonidoLargo(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "hidratacion_recordatorio_v2" // Nuevo ID para asegurar silencio
         
@@ -143,7 +141,7 @@ class HidratacionReceiver : BroadcastReceiver() {
         ejecutarSonidoSincronizado(context)
     }
 
-    private fun ejecutarSonidoSincronizado(context: Context) {
+    private suspend fun ejecutarSonidoSincronizado(context: Context) {
         val prefs = context.getSharedPreferences("ergo_sound_sync", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         
@@ -154,35 +152,30 @@ class HidratacionReceiver : BroadcastReceiver() {
 
         prefs.edit().putLong("ergo_last_sound_end", startTime + 6000).apply()
 
-        val result = goAsync()
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                if (waitTime > 0) delay(waitTime) 
+        try {
+            if (waitTime > 0) delay(waitTime) 
 
-                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                val ringtone = RingtoneManager.getRingtone(context, uri).apply {
-                    audioAttributes = android.media.AudioAttributes.Builder()
-                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                }
-                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                
-                ringtone?.play()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
-                } else {
-                    vibrator.vibrate(longArrayOf(0, 500, 500), 0)
-                }
-
-                delay(6000)
-                
-                ringtone?.stop()
-                vibrator.cancel()
-            } catch (e: Exception) {
-            } finally {
-                result.finish()
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val ringtone = RingtoneManager.getRingtone(context, uri).apply {
+                audioAttributes = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
             }
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            
+            ringtone?.play()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
+            } else {
+                vibrator.vibrate(longArrayOf(0, 500, 500), 0)
+            }
+
+            delay(6000)
+            
+            ringtone?.stop()
+            vibrator.cancel()
+        } catch (e: Exception) {
         }
     }
 

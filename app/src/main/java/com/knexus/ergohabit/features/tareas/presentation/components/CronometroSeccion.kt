@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -29,7 +30,8 @@ fun CronometroSeccion(
     tiempoRestante: Int,
     duracionSesionActual: Int,
     isRunning: Boolean,
-    onToggleTimer: () -> Unit
+    onToggleTimer: () -> Unit,
+    onCompleteTarea: () -> Unit
 ) {
     val totalSegundos = if (duracionSesionActual > 0) duracionSesionActual else (tarea?.duracionMinutos ?: 45) * 60
     val progreso = if (totalSegundos > 0) tiempoRestante.toFloat() / totalSegundos else 0f
@@ -156,29 +158,55 @@ fun CronometroSeccion(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = onToggleTimer,
-                modifier = Modifier
-                    .height(64.dp)
-                    .fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = GreenPrimary
-                ),
-                shape = RoundedCornerShape(24.dp),
-                enabled = tarea != null
-            ) {
-                Icon(
-                    imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isRunning) "Pausar" else "Iniciar",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onToggleTimer,
+                    modifier = Modifier
+                        .height(56.dp)
+                        .weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GreenPrimary
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    enabled = tarea != null
+                ) {
+                    Icon(
+                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isRunning) "Pausar" else "Iniciar",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onCompleteTarea,
+                    modifier = Modifier
+                        .height(56.dp)
+                        .weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = TextPrimary
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, TextPrimary.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(20.dp),
+                    enabled = tarea != null
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Terminar",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
         }
     }

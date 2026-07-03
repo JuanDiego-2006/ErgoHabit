@@ -227,9 +227,9 @@ fun TareaScreen(
                 }
             }
             
-            // --- CRONÓMETRO EXPANDIBLE (Toggle) ---
+            // --- CRONÓMETRO EXPANDIBLE (Memoria de Interfaz) ---
             androidx.compose.animation.AnimatedVisibility(
-                visible = uiState.tareaSeleccionada != null,
+                visible = uiState.isCronometroVisible && uiState.tareaSeleccionada != null,
                 enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                 exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
             ) {
@@ -240,7 +240,8 @@ fun TareaScreen(
                         tiempoRestante = uiState.tiempoRestante,
                         duracionSesionActual = uiState.duracionSesionActual,
                         isRunning = uiState.isTimerRunning,
-                        onToggleTimer = { viewModel.toggleTimer() }
+                        onToggleTimer = { viewModel.toggleTimer() },
+                        onCompleteTarea = { viewModel.completarTarea() }
                     )
                 }
             }

@@ -11,6 +11,7 @@ data class TareaUiState(
     
     // Timer
     val tareaSeleccionada: TareaEnfoque? = null,
+    val isCronometroVisible: Boolean = false, // --- NUEVO: Control de visibilidad persistente ---
     val tiempoRestante: Int = 0, // En segundos
     val duracionSesionActual: Int = 0, // Segundos totales de la sesión para la barra
     val targetEndTimeMs: Long = -1L, // Hora exacta de finalización

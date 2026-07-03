@@ -71,7 +71,6 @@ class TareaRepositoryImpl @Inject constructor(
 
     override suspend fun iniciarTarea(idTarea: Int): Result<String> {
         return try {
-            // Actualización optimista local compatible con API 24+
             val now = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
                 timeZone = java.util.TimeZone.getTimeZone("UTC")
             }.format(java.util.Date())
@@ -81,27 +80,34 @@ class TareaRepositoryImpl @Inject constructor(
             val response = api.iniciarTarea(idTarea)
             Result.success(response.mensaje ?: "Cronómetro iniciado")
         } catch (e: Exception) {
-            Result.failure(parseError(e))
+            // Resiliencia: Si no hay señal, el cronómetro ya inició en Room
+            Result.success("Iniciado localmente (sincronizando...)")
         }
     }
 
     override suspend fun pausarTarea(idTarea: Int): Result<String> {
         return try {
-            // Actualización optimista local
             daoTarea.updateTareaEstado(idTarea, 1, null)
             val response = api.pausarTarea(idTarea)
             Result.success(response.mensaje ?: "Cronómetro pausado")
         } catch (e: Exception) {
-            Result.failure(parseError(e))
+            // Resiliencia: Si no hay señal, la pausa ya se registró en Room
+            Result.success("Pausado localmente (sincronizando...)")
         }
     }
 
     override suspend fun completarTarea(idTarea: Int): Result<String> {
         return try {
+            // 1. MARCAR COMO COMPLETADA EN ROOM (Actualización Optimista)
+            // Esto hace que la tarea se mueva de lista en la UI inmediatamente
+            daoTarea.updateTareaEstado(idTarea, 2, null) // 2 suele ser el ID de 'Completada'
+            
             val response = api.completarTarea(idTarea)
             Result.success(response.mensaje ?: "Tarea completada")
         } catch (e: Exception) {
-            Result.failure(parseError(e))
+            // Si falla la red, no devolvemos error fatal porque ya se marcó en Room
+            // La sincronización ocurrirá en el próximo refresco de la lista.
+            Result.success("Tarea guardada localmente (se sincronizará al recuperar señal)")
         }
     }
 

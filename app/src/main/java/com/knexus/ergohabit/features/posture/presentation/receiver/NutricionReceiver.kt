@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -32,25 +33,38 @@ class NutricionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-            reprogramarAlertas(context)
+            val result = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    reprogramarAlertas(context)
+                } finally {
+                    result.finish()
+                }
+            }
             return
         }
 
         val tipo = intent.getStringExtra("tipoComida") ?: return
-        mostrarNotificacionConSonidoLargo(context, tipo)
+        
+        val result = goAsync()
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                mostrarNotificacionConSonidoLargo(context, tipo)
+            } finally {
+                result.finish()
+            }
+        }
     }
 
-    private fun mostrarNotificacionConSonidoLargo(context: Context, tipo: String) {
+    private suspend fun mostrarNotificacionConSonidoLargo(context: Context, tipo: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "nutricion_recordatorio_v3" // Nuevo ID para asegurar silencio en el canal
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-
+        val channelId = "nutricion_recordatorio_v3"
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Recordatorios de Comida"
             val channel = NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Alertas de nutrición de ErgoHabit"
                 enableVibration(true)
-                // HACEMOS EL CANAL SILENCIOSO porque el sonido lo manejaremos manualmente por 6s
                 setSound(null, null)
             }
             notificationManager.createNotificationChannel(channel)
@@ -74,13 +88,16 @@ class NutricionReceiver : BroadcastReceiver() {
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(true)
-            .setSound(null) // Notificación silenciosa
+            .setSound(null)
             .setContentIntent(pendingIntent)
             .build()
 
         notificationManager.notify(tipo.hashCode(), notification)
 
-        // Lógica para sonido de ALARMA de 6 segundos con COLA INTELIGENTE (Turnos)
+        ejecutarSonidoSincronizado(context)
+    }
+
+    private suspend fun ejecutarSonidoSincronizado(context: Context) {
         val prefs = context.getSharedPreferences("ergo_sound_sync", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val lastSoundEnd = prefs.getLong("ergo_last_sound_end", 0L)
@@ -90,47 +107,39 @@ class NutricionReceiver : BroadcastReceiver() {
 
         prefs.edit().putLong("ergo_last_sound_end", startTime + 6000).apply()
 
-        val result = goAsync()
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                if (waitTime > 0) delay(waitTime) 
+        try {
+            if (waitTime > 0) delay(waitTime) 
 
-                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                val ringtone = RingtoneManager.getRingtone(context, uri).apply {
-                    audioAttributes = android.media.AudioAttributes.Builder()
-                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                }
-                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                
-                ringtone?.play()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
-                } else {
-                    vibrator.vibrate(longArrayOf(0, 500, 500), 0)
-                }
-
-                delay(6000) 
-                
-                ringtone?.stop()
-                vibrator.cancel()
-            } catch (e: Exception) {
-            } finally {
-                result.finish()
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val ringtone = RingtoneManager.getRingtone(context, uri).apply {
+                audioAttributes = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
             }
-        }
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            
+            ringtone?.play()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
+            } else {
+                vibrator.vibrate(longArrayOf(0, 500, 500), 0)
+            }
+
+            delay(6000) 
+            
+            ringtone?.stop()
+            vibrator.cancel()
+        } catch (e: Exception) {}
     }
 
-    private fun reprogramarAlertas(context: Context) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val config = nutricionDao.getNutricionConfig().first()
-            if (config != null && config.notificacionesHabilitadas) {
-                val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                programar(context, am, config.horaDesayuno, "DESAYUNO", 300)
-                programar(context, am, config.horaComida, "COMIDA", 301)
-                programar(context, am, config.horaCena, "CENA", 302)
-            }
+    private suspend fun reprogramarAlertas(context: Context) {
+        val config = nutricionDao.getNutricionConfig().first()
+        if (config != null && config.notificacionesHabilitadas) {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            programar(context, am, config.horaDesayuno, "DESAYUNO", 300)
+            programar(context, am, config.horaComida, "COMIDA", 301)
+            programar(context, am, config.horaCena, "CENA", 302)
         }
     }
 
@@ -142,7 +151,6 @@ class NutricionReceiver : BroadcastReceiver() {
             var h = partesBase[0].toInt()
             val m = partesBase[1].take(2).toInt()
 
-            // Corregir formato AM/PM para que no suene a las 2 AM si es PM
             if (clean.contains("PM") && h < 12) h += 12
             if (clean.contains("AM") && h == 12) h = 0
 

@@ -44,4 +44,13 @@ class SessionManager @Inject constructor(context: Context) {
     fun clearSession() {
         prefs.edit().remove(USER_TOKEN).apply()
     }
+
+    // --- NUEVO: Persistencia de visibilidad del cronómetro ---
+    fun saveCronometroVisibility(visible: Boolean) {
+        prefs.edit().putBoolean("cronometro_visible", visible).apply()
+    }
+
+    fun isCronometroVisible(): Boolean {
+        return prefs.getBoolean("cronometro_visible", false)
+    }
 }
