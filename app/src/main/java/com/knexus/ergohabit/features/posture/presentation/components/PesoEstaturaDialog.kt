@@ -76,7 +76,7 @@ fun PesoEstaturaDialog(
                     SelectableDataCard(
                         label = "ESTATURA",
                         value = estaturaInput,
-                        unit = "m",
+                        unit = "cm",
                         isSelected = !editandoPeso,
                         modifier = Modifier.weight(1f),
                         onClick = { onCambiarModo(false) }
@@ -101,7 +101,7 @@ fun PesoEstaturaDialog(
                             textAlign = TextAlign.Center
                         ),
                         modifier = Modifier.width(180.dp),
-                        keyboardOptions = KeyboardOptions(keyboardType = if (editandoPeso) KeyboardType.Number else KeyboardType.Decimal),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -112,7 +112,7 @@ fun PesoEstaturaDialog(
                     )
                     
                     Text(
-                        text = if (editandoPeso) "kg" else "m",
+                        text = if (editandoPeso) "kg" else "cm",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1E392A),

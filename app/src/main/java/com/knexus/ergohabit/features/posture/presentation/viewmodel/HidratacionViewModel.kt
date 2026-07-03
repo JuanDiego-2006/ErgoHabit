@@ -46,7 +46,7 @@ class HidratacionViewModel @Inject constructor(
                         pesoActual = dashboard.pesoActual.toInt(),
                         estaturaActual = dashboard.estaturaActual,
                         pesoInput = dashboard.pesoActual.toInt().toString(),
-                        estaturaInput = String.format(Locale.US, "%.2f", dashboard.estaturaActual),
+                        estaturaInput = (dashboard.estaturaActual * 100).toInt().toString(),
                         fraseMotivacional = dashboard.fraseMotivacional,
                         tipsHidratacion = dashboard.tipsHidratacion,
                         notificacionesActivas = dashboard.notificacionesActivas,
@@ -117,12 +117,11 @@ class HidratacionViewModel @Inject constructor(
     }
 
     fun onEstaturaInputChange(newInput: String) {
-        if (newInput.length > 4) return
-        // Permitir dígitos y punto decimal
-        val filtered = newInput.filter { it.isDigit() || it == '.' }
+        if (newInput.length > 3) return
+        val filtered = newInput.filter { it.isDigit() }
         _uiState.update { it.copy(
             estaturaInput = filtered,
-            estaturaActual = filtered.toDoubleOrNull() ?: it.estaturaActual
+            estaturaActual = (filtered.toIntOrNull() ?: 0) / 100.0
         ) }
     }
 

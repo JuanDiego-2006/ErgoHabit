@@ -19,7 +19,7 @@ data class HidratacionUiState(
     val pesoActual: Int = 70,
     val estaturaActual: Double = 1.70,
     val pesoInput: String = "70",
-    val estaturaInput: String = "1.70",
+    val estaturaInput: String = "170",
     val metaManualInput: String = "2000",
     val editandoPeso: Boolean = true, // true: Peso, false: Estatura
     val metaManualTemporal: Int = 2000,
